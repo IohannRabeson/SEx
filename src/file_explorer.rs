@@ -102,14 +102,14 @@ enum Node {
         children: Vec<Rc<RefCell<Node>>>,
         path_component: String,
     },
-    Container {
+    Directory {
         id: NodeId,
         parent: Weak<RefCell<Node>>,
         children: Vec<Rc<RefCell<Node>>>,
         path_component: String,
         status: ContainerStatus,
     },
-    Leaf {
+    File {
         id: NodeId,
         parent: Weak<RefCell<Node>>,
         path_component: String,
@@ -120,16 +120,16 @@ impl Node {
     fn id(&self) -> NodeId {
         match self {
             Node::Root { id, .. } => *id,
-            Node::Container { id, .. } => *id,
-            Node::Leaf { id, .. } => *id,
+            Node::Directory { id, .. } => *id,
+            Node::File { id, .. } => *id,
         }
     }
 
     fn parent(&self) -> Option<NodeId> {
         match self {
             Node::Root { .. } => None,
-            Node::Container { parent, .. } => parent.upgrade().map(|node| node.borrow().id()),
-            Node::Leaf { parent, .. } => parent.upgrade().map(|node| node.borrow().id()),
+            Node::Directory { parent, .. } => parent.upgrade().map(|node| node.borrow().id()),
+            Node::File { parent, .. } => parent.upgrade().map(|node| node.borrow().id()),
         }
     }
 
@@ -138,10 +138,10 @@ impl Node {
             Node::Root { .. } => {
                 panic!("Trying to set parent of the root.")
             }
-            Node::Container { parent, .. } => {
+            Node::Directory { parent, .. } => {
                 *parent = new_parent;
             }
-            Node::Leaf { parent, .. } => {
+            Node::File { parent, .. } => {
                 *parent = new_parent;
             }
         }
@@ -152,10 +152,10 @@ impl Node {
             Node::Root { children, .. } => {
                 children.push(child);
             }
-            Node::Container { children, .. } => {
+            Node::Directory { children, .. } => {
                 children.push(child);
             }
-            Node::Leaf { .. } => {
+            Node::File { .. } => {
                 panic!("Trying to add a child to a leaf")
             }
         }
@@ -164,31 +164,31 @@ impl Node {
     fn children(&self) -> Box<dyn Iterator<Item = NodeId> + '_> {
         match self {
             Node::Root { children, .. } => Box::new(children.iter().map(|node| node.borrow().id())),
-            Node::Container { children, .. } => {
+            Node::Directory { children, .. } => {
                 Box::new(children.iter().map(|node| node.borrow().id()))
             }
-            Node::Leaf { .. } => Box::new(std::iter::empty::<NodeId>()),
+            Node::File { .. } => Box::new(std::iter::empty::<NodeId>()),
         }
     }
 
     fn path_component(&self) -> String {
         match self {
             Node::Root { path_component, .. } => path_component.clone(),
-            Node::Container { path_component, .. } => path_component.clone(),
-            Node::Leaf { path_component, .. } => path_component.clone(),
+            Node::Directory { path_component, .. } => path_component.clone(),
+            Node::File { path_component, .. } => path_component.clone(),
         }
     }
 
     fn status(&self) -> ContainerStatus {
         match self {
             Node::Root { .. } => ContainerStatus::Expanded,
-            Node::Container { status, .. } => *status,
-            Node::Leaf { .. } => ContainerStatus::Empty,
+            Node::Directory { status, .. } => *status,
+            Node::File { .. } => ContainerStatus::Empty,
         }
     }
 
     fn set_status(&mut self, new_status: ContainerStatus) {
-        if let Node::Container { status, .. } = self {
+        if let Node::Directory { status, .. } = self {
             *status = new_status;
         }
     }
@@ -237,7 +237,7 @@ impl FileExplorerModel {
         let new_node_id = NodeId(self.next_node_id);
         self.next_node_id += 1;
         let parent_node = self.index.get(&parent).unwrap();
-        let mut new_node = Node::Container {
+        let mut new_node = Node::Directory {
             id: new_node_id,
             parent: Rc::downgrade(parent_node),
             children: Vec::new(),
@@ -259,7 +259,7 @@ impl FileExplorerModel {
         let new_node_id = NodeId(self.next_node_id);
         self.next_node_id += 1;
         let parent_node = self.index.get(&parent).unwrap();
-        let mut new_node = Node::Leaf {
+        let mut new_node = Node::File {
             id: new_node_id,
             parent: Rc::downgrade(parent_node),
             path_component,
