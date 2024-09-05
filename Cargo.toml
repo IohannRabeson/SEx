@@ -1,0 +1,9 @@
+[package]
+name = "sex"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-std = "1.12.0"
+iced = { git = "https://github.com/iced-rs/iced.git", features = ["async-std"] }
+rfd = "0.14.1"
