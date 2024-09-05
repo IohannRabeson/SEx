@@ -80,6 +80,11 @@ impl SEx {
                     tree.set_status(id, ContainerStatus::Expanded);
                 }
             }
+            Message::FileExplorer(FileExplorerMessage::Select(id)) => {
+                if let Some(tree) = self.tree.as_mut() {
+                    tree.set_selection(id);
+                }
+            }
         }
 
         Task::none()

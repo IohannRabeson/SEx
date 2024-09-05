@@ -2,7 +2,7 @@ use std::{
     cell::RefCell, collections::{BTreeMap, VecDeque}, path::PathBuf, rc::{Rc, Weak}, usize
 };
 
-use iced::{widget::{row, scrollable, text, Column, MouseArea, Space}, Element, Length};
+use iced::{widget::{container, row, scrollable, text, Column, MouseArea, Space}, Element, Length, Theme};
 
 use crate::Message;
 
@@ -12,18 +12,13 @@ pub enum FileExplorerMessage {
     ChildrenLoaded(NodeId, Vec<EntryFound>),
     Collapse(NodeId),
     Expand(NodeId),
+    Select(Option<NodeId>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum EntryFound {
     Directory { path_component: String },
     File { path_component: String },
-}
-
-pub struct FileExplorerModel {
-    root: Rc<RefCell<Node>>,
-    index: BTreeMap<NodeId, Rc<RefCell<Node>>>,
-    next_node_id: usize,
 }
 
 #[derive(Clone, Copy)]
@@ -37,6 +32,12 @@ pub enum ContainerStatus {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct NodeId(usize);
 
+fn selected_style(theme: &Theme) -> container::Style {
+    container::Style {
+        background: Some(iced::Background::Color(theme.palette().primary)),
+        ..Default::default()
+    }
+}
 
 pub fn view(tree: Option<&FileExplorerModel>) -> Element<Message> {
     const DEPTH_OFFSET: f32 = 16f32;
@@ -50,17 +51,25 @@ pub fn view(tree: Option<&FileExplorerModel>) -> Element<Message> {
             }
             let path_component = tree.path_component(id).unwrap();
             let status = tree.status(id).unwrap();
+            let mut selectable_part = container(text(path_component));
+
+            if tree.selection.is_some_and(|selection| selection == id) {
+                selectable_part = selectable_part.style(selected_style);
+            }
+
+            let selectable_part = MouseArea::new(selectable_part).on_press(Message::FileExplorer(FileExplorerMessage::Select(Some(id))));
+
             let row = row![
                 Space::new(Length::Fixed(depth as f32 * DEPTH_OFFSET), Length::Shrink),
                 show_children_control(&tree, id, status),
                 Space::new(Length::Fixed(5f32), Length::Shrink),
-                text(path_component),
+                selectable_part,
             ];
 
             main_column = main_column.push(row);
         }
     }
-    scrollable(main_column).width(Length::Fill).into()
+    MouseArea::new(scrollable(main_column).width(Length::Fill).height(Length::Fill)).on_press(Message::FileExplorer(FileExplorerMessage::Select(None))).into()
 }
 
 fn show_children_control(tree: &FileExplorerModel, id: NodeId, status: ContainerStatus) -> Element<Message> {
@@ -185,6 +194,14 @@ impl Node {
     }
 }
 
+
+pub struct FileExplorerModel {
+    root: Rc<RefCell<Node>>,
+    index: BTreeMap<NodeId, Rc<RefCell<Node>>>,
+    next_node_id: usize,
+    selection: Option<NodeId>,
+}
+
 impl FileExplorerModel {
     pub fn new(root_path_component: String) -> Self {
         let mut next_node_id = 0;
@@ -202,6 +219,7 @@ impl FileExplorerModel {
             index: BTreeMap::from([(root_id, root.clone())]),
             root,
             next_node_id,
+            selection: None,
         }
     }
 
@@ -319,5 +337,9 @@ impl FileExplorerModel {
         }
 
         result
+    }
+
+    pub fn set_selection(&mut self, selection: Option<NodeId>) {
+        self.selection = selection;
     }
 }
