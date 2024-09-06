@@ -1,8 +1,14 @@
 use std::{
-    cell::RefCell, collections::{BTreeMap, VecDeque}, path::PathBuf, rc::{Rc, Weak}, usize
+    cell::RefCell,
+    collections::{BTreeMap, VecDeque},
+    path::PathBuf,
+    rc::{Rc, Weak},
+    usize,
 };
 
-use iced::{widget::{container, row, scrollable, text, Column, MouseArea, Space}, Element, Length, Theme};
+use iced::{
+    widget::{container, row, column, scrollable, svg, text, Column, MouseArea, Space, Svg}, Element, Length, Padding, Theme
+};
 
 use crate::Message;
 
@@ -49,15 +55,13 @@ pub fn view(tree: Option<&FileExplorerModel>) -> Element<Message> {
             if id == tree.root_id() {
                 continue;
             }
-            let path_component = tree.path_component(id).unwrap();
             let status = tree.status(id).unwrap();
-            let mut selectable_part = container(text(path_component));
-
-            if tree.selection.is_some_and(|selection| selection == id) {
-                selectable_part = selectable_part.style(selected_style);
-            }
-
-            let selectable_part = MouseArea::new(selectable_part).on_press(Message::FileExplorer(FileExplorerMessage::Select(Some(id))));
+            let selectable_part = make_selectable_part(
+                &tree,
+                id,
+                tree.folder_closed_icon.clone(),
+                tree.folder_open_icon.clone(),
+            );
 
             let row = row![
                 Space::new(Length::Fixed(depth as f32 * DEPTH_OFFSET), Length::Shrink),
@@ -69,10 +73,71 @@ pub fn view(tree: Option<&FileExplorerModel>) -> Element<Message> {
             main_column = main_column.push(row);
         }
     }
-    MouseArea::new(scrollable(main_column).width(Length::Fill).height(Length::Fill)).on_press(Message::FileExplorer(FileExplorerMessage::Select(None))).into()
+    MouseArea::new(
+        scrollable(main_column)
+            .width(Length::Fill)
+            .height(Length::Fill),
+    )
+    .on_press(Message::FileExplorer(FileExplorerMessage::Select(None)))
+    .into()
 }
 
-fn show_children_control(tree: &FileExplorerModel, id: NodeId, status: ContainerStatus) -> Element<Message> {
+fn make_selectable_part<'a>(
+    model: &'a FileExplorerModel,
+    id: NodeId,
+    folder: svg::Handle,
+    folder_open: svg::Handle,
+) -> Element<'a, Message> {
+    let node = &*model.index.get(&id).unwrap().borrow();
+    let selectable_part: Element<Message> = match node {
+        Node::Root { path_component, .. } => {
+            text(path_component.clone()).into()
+        },
+        Node::Directory { path_component, status, .. } => {
+            const SVG_ICON_SIZE: f32 = 16f32;
+            const SVG_VERTICAL_OFFSET: f32 = 2f32;
+
+            let svg = svg(match status {
+                ContainerStatus::NotLoaded
+                | ContainerStatus::Collapsed
+                | ContainerStatus::Empty => {
+                    folder
+                },
+                ContainerStatus::Expanded => folder_open,
+            }).width(Length::Fixed(SVG_ICON_SIZE))
+            .height(Length::Fixed(SVG_ICON_SIZE))
+            .style(|theme: &Theme, _status|{
+                svg::Style {
+                    color: Some(theme.palette().text)
+                }
+            });
+            let svg = column![Space::new(Length::Shrink, Length::Fixed(SVG_VERTICAL_OFFSET)), svg];
+            let svg = container(svg).padding(Padding::from([0, 4]));
+
+            row![svg, text(path_component.clone())].into()
+        },
+        Node::File { path_component, .. } => {
+            text(path_component.clone()).into()
+        },
+    };
+    
+    // row![Svg::new(), text(path_component)];
+    let mut selectable_part = container(selectable_part);
+
+    if model.selection.is_some_and(|selection| selection == id) {
+        selectable_part = selectable_part.style(selected_style);
+    }
+
+    MouseArea::new(selectable_part)
+       .on_press(Message::FileExplorer(FileExplorerMessage::Select(Some(id))))
+       .into()
+}
+
+fn show_children_control(
+    tree: &FileExplorerModel,
+    id: NodeId,
+    status: ContainerStatus,
+) -> Element<Message> {
     const COLLAPSED: &str = "▶";
     const EXPANDED: &str = "▼";
 
@@ -194,12 +259,13 @@ impl Node {
     }
 }
 
-
 pub struct FileExplorerModel {
     root: Rc<RefCell<Node>>,
     index: BTreeMap<NodeId, Rc<RefCell<Node>>>,
     next_node_id: usize,
     selection: Option<NodeId>,
+    folder_open_icon: svg::Handle,
+    folder_closed_icon: svg::Handle,
 }
 
 impl FileExplorerModel {
@@ -220,6 +286,8 @@ impl FileExplorerModel {
             root,
             next_node_id,
             selection: None,
+            folder_closed_icon: svg::Handle::from_memory(include_bytes!("icons/folder-svgrepo-com.svg")),
+            folder_open_icon: svg::Handle::from_memory(include_bytes!("icons/folder-open-side-svgrepo-com.svg")),
         }
     }
 

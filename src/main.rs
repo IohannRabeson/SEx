@@ -1,10 +1,7 @@
 use std::path::PathBuf;
 
 use file_explorer::{ContainerStatus, EntryFound, FileExplorerMessage, FileExplorerModel};
-use iced::{
-    futures::StreamExt,
-    Element, Task,
-};
+use iced::{futures::StreamExt, Element, Task};
 use rfd::AsyncFileDialog;
 
 mod file_explorer;
@@ -64,10 +61,7 @@ impl SEx {
                         }
                     }
 
-                    tree.set_status(
-                        parent_id,
-                        ContainerStatus::Expanded,
-                    );
+                    tree.set_status(parent_id, ContainerStatus::Expanded);
                 }
             }
             Message::FileExplorer(FileExplorerMessage::Collapse(id)) => {
