@@ -94,8 +94,8 @@ fn make_selectable_part<'a>(
             text(path_component.clone()).into()
         },
         Node::Directory { path_component, status, .. } => {
-            const SVG_ICON_SIZE: f32 = 16f32;
-            const SVG_VERTICAL_OFFSET: f32 = 2f32;
+            const SVG_ICON_SIZE: f32 = 20f32;
+            const SVG_VERTICAL_OFFSET: f32 = 0f32;
 
             let svg = svg(match status {
                 ContainerStatus::NotLoaded
