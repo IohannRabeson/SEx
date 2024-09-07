@@ -1,10 +1,12 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
+use audio::Audio;
 use file_explorer::{ContainerStatus, EntryFound, FileExplorerMessage, FileExplorerModel};
 use iced::{futures::StreamExt, Element, Task};
 use rfd::AsyncFileDialog;
 
 mod file_explorer;
+mod audio;
 
 fn main() -> iced::Result {
     iced::application("SEx", SEx::update, SEx::view).run_with(SEx::new)
@@ -18,12 +20,13 @@ enum Message {
 
 struct SEx {
     model: Option<FileExplorerModel>,
+    audio: Audio,
 }
 
 impl SEx {
     fn new() -> (Self, Task<Message>) {
         (
-            Self { model: None },
+            Self { model: None, audio: Audio::new() },
             Task::perform(select_existing_directory(), Message::OpenDirectory),
         )
     }
@@ -77,6 +80,18 @@ impl SEx {
             Message::FileExplorer(FileExplorerMessage::Select(id)) => {
                 if let Some(model) = self.model.as_mut() {
                     model.set_selection(id);
+
+                    if let Some(id) = id {
+                        let path = model.path(id);
+                        
+                        if path.is_file() && is_file_contains_audio(&path) {
+                            self.audio.play(path);
+                        } else {
+                            self.audio.stop();
+                        }
+                    } else {
+                        self.audio.stop();
+                    }
                 }
             }
         }
@@ -87,6 +102,12 @@ impl SEx {
     fn view(&self) -> Element<Message> {
         file_explorer::view(self.model.as_ref())
     }
+}
+
+fn is_file_contains_audio(path: impl AsRef<Path>) -> bool {
+    let mime_guess = mime_guess::from_path(path);
+
+    mime_guess.iter().find(|mime|mime.type_() == mime::AUDIO).is_some()
 }
 
 async fn select_existing_directory() -> Option<PathBuf> {
