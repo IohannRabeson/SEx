@@ -2,14 +2,17 @@ use std::path::{Path, PathBuf};
 
 use audio::Audio;
 use file_explorer::{ContainerStatus, EntryFound, FileExplorerMessage, FileExplorerModel};
-use iced::{futures::StreamExt, Element, Task};
+use iced::{futures::StreamExt, Element, Font, Task};
 use rfd::AsyncFileDialog;
 
 mod file_explorer;
 mod audio;
 
 fn main() -> iced::Result {
-    iced::application("SEx", SEx::update, SEx::view).run_with(SEx::new)
+    iced::application("SEx", SEx::update, SEx::view)
+        .font(include_bytes!("fonts/SF-Pro.ttf").as_slice())
+        .default_font(Font::with_name("SF Pro"))
+        .run_with(SEx::new)
 }
 
 #[derive(Debug, Clone)]
