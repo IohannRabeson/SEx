@@ -7,7 +7,7 @@ use std::{
 };
 
 use iced::{
-    widget::{container, row, column, scrollable, svg, text, Column, MouseArea, Space, Svg}, Element, Length, Padding, Theme
+    widget::{container, row, column, scrollable, svg, text, Column, MouseArea, Space}, Element, Length, Padding, Theme
 };
 
 use crate::Message;

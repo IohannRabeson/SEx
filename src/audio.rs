@@ -1,4 +1,4 @@
-use std::{fs::File, io::BufReader, path::{Path, PathBuf}, sync::{atomic::AtomicBool, mpsc::Sender}, thread::{spawn, JoinHandle}};
+use std::{fs::File, io::BufReader, path::{Path, PathBuf}, sync::mpsc::Sender, thread::{spawn, JoinHandle}};
 
 pub enum Command {
     Play(PathBuf),
