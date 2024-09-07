@@ -17,13 +17,13 @@ enum Message {
 }
 
 struct SEx {
-    tree: Option<FileExplorerModel>,
+    model: Option<FileExplorerModel>,
 }
 
 impl SEx {
     fn new() -> (Self, Task<Message>) {
         (
-            Self { tree: None },
+            Self { model: None },
             Task::perform(select_existing_directory(), Message::OpenDirectory),
         )
     }
@@ -34,10 +34,10 @@ impl SEx {
                 if let Some(path) = path {
                     assert!(path.is_dir());
 
-                    let tree = FileExplorerModel::new(path.display().to_string());
-                    let root = tree.root_id();
+                    let model = FileExplorerModel::new(path.display().to_string());
+                    let root = model.root_id();
 
-                    self.tree = Some(tree);
+                    self.model = Some(model);
                     return Task::perform(load_directory_entries(path), move |entries| {
                         Message::FileExplorer(FileExplorerMessage::ChildrenLoaded(root, entries))
                     });
@@ -49,34 +49,34 @@ impl SEx {
                 });
             }
             Message::FileExplorer(FileExplorerMessage::ChildrenLoaded(parent_id, new_entries)) => {
-                if let Some(tree) = self.tree.as_mut() {
+                if let Some(model) = self.model.as_mut() {
                     for new_entry in new_entries {
                         match new_entry {
                             EntryFound::File { path_component } => {
-                                tree.add_leaf(parent_id, path_component);
+                                model.add_leaf(parent_id, path_component);
                             }
                             EntryFound::Directory { path_component } => {
-                                tree.add_container(parent_id, path_component);
+                                model.add_container(parent_id, path_component);
                             }
                         }
                     }
 
-                    tree.set_status(parent_id, ContainerStatus::Expanded);
+                    model.set_status(parent_id, ContainerStatus::Expanded);
                 }
             }
             Message::FileExplorer(FileExplorerMessage::Collapse(id)) => {
-                if let Some(tree) = self.tree.as_mut() {
-                    tree.set_status(id, ContainerStatus::Collapsed);
+                if let Some(model) = self.model.as_mut() {
+                    model.set_status(id, ContainerStatus::Collapsed);
                 }
             }
             Message::FileExplorer(FileExplorerMessage::Expand(id)) => {
-                if let Some(tree) = self.tree.as_mut() {
-                    tree.set_status(id, ContainerStatus::Expanded);
+                if let Some(model) = self.model.as_mut() {
+                    model.set_status(id, ContainerStatus::Expanded);
                 }
             }
             Message::FileExplorer(FileExplorerMessage::Select(id)) => {
-                if let Some(tree) = self.tree.as_mut() {
-                    tree.set_selection(id);
+                if let Some(model) = self.model.as_mut() {
+                    model.set_selection(id);
                 }
             }
         }
@@ -85,7 +85,7 @@ impl SEx {
     }
 
     fn view(&self) -> Element<Message> {
-        file_explorer::view(self.tree.as_ref())
+        file_explorer::view(self.model.as_ref())
     }
 }
 
