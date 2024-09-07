@@ -297,7 +297,7 @@ impl FileExplorerModel {
         if let Node::Root { id, .. } = &*root {
             return *id;
         } else {
-            panic!("")
+            panic!("The root node is not a Root")
         }
     }
 
