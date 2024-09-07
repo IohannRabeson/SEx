@@ -286,8 +286,8 @@ impl FileExplorerModel {
             root,
             next_node_id,
             selection: None,
-            folder_closed_icon: svg::Handle::from_memory(include_bytes!("icons/folder-svgrepo-com.svg")),
-            folder_open_icon: svg::Handle::from_memory(include_bytes!("icons/folder-open-side-svgrepo-com.svg")),
+            folder_closed_icon: svg::Handle::from_memory(include_bytes!("../icons/folder-svgrepo-com.svg")),
+            folder_open_icon: svg::Handle::from_memory(include_bytes!("../icons/folder-open-side-svgrepo-com.svg")),
         }
     }
 

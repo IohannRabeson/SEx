@@ -10,7 +10,7 @@ mod audio;
 
 fn main() -> iced::Result {
     iced::application("SEx", SEx::update, SEx::view)
-        .font(include_bytes!("fonts/SF-Pro.ttf").as_slice())
+        .font(include_bytes!("../fonts/SF-Pro.ttf").as_slice())
         .default_font(Font::with_name("SF Pro"))
         .run_with(SEx::new)
 }
