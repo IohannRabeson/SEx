@@ -1,12 +1,12 @@
 use std::{
-    cell::RefCell, collections::{BTreeMap, VecDeque}, path::PathBuf, rc::{Rc, Weak}, usize
+    cell::RefCell, collections::{BTreeMap, VecDeque}, ops::{Deref, DerefMut}, path::PathBuf, rc::{Rc, Weak}, usize
 };
 
 use iced::{
-    alignment::Vertical, widget::{container, row, scrollable, svg, text, Column, MouseArea, Space}, Element, Length, Padding, Theme
+    alignment::Vertical, widget::{container, row, scrollable, svg, text, Column, MouseArea, Space}, Element, Length, Padding, Task, Theme
 };
 
-use crate::Message;
+use crate::{load_directory_entries, Message};
 
 #[derive(Debug, Clone)]
 pub enum FileExplorerMessage {
@@ -17,6 +17,7 @@ pub enum FileExplorerMessage {
     Select(Option<NodeId>),
     SelectNext,
     SelectPrevious,
+    ExpandCollapseCurrent,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -428,6 +429,33 @@ impl FileExplorerModel {
         let node = self.index.get(&id)?;
 
         Some(node.borrow().status())
+    }
+
+    pub fn expand_collapse(&mut self, id: NodeId) -> Option<Task<Message>> {
+        if let Some(node) = self.index.get(&id) {
+            // HACK: I create the path here BEFORE I borrow the node mutably because
+            // path also borrows the node. I think I should maybe not have the whole Node
+            // possibly mutable (not using RefCell<Node> but just Node). What needs to be mutable 
+            // are the fields children, and the status of Node::Directory.
+            let path = self.path(id);
+
+            if let Node::Directory { status, .. } = node.borrow_mut().deref_mut(){
+                match status {
+                    ContainerStatus::Expanded => *status = ContainerStatus::Collapsed,
+                    ContainerStatus::Collapsed => *status = ContainerStatus::Expanded,
+                    ContainerStatus::NotLoaded => {
+                        
+                        
+                        return Some(Task::perform(load_directory_entries(path), move |entries| {
+                            Message::FileExplorer(FileExplorerMessage::ChildrenLoaded(id, entries))
+                        }))
+                    }
+                    _ => (),
+                }
+            }
+        }
+
+        None
     }
 
     pub fn path(&self, id: NodeId) -> PathBuf {

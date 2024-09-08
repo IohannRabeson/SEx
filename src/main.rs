@@ -97,6 +97,19 @@ impl SEx {
                     }
                 }
             }
+            Message::FileExplorer(FileExplorerMessage::ExpandCollapseCurrent) => {
+                if let Some(model) = self.model.as_mut() {
+                    if let Some(current_id) = model.selection() {
+                        let mut task = model.expand_collapse(current_id);
+
+                        model.update_linear_index();
+
+                        if task.is_some() {
+                            return task.take().unwrap();
+                        }
+                    }
+                }
+            }
         }
 
         Task::none()
@@ -131,6 +144,9 @@ impl SEx {
             }
             keyboard::Key::Named(keyboard::key::Named::ArrowUp) => {
                 Some(Message::FileExplorer(FileExplorerMessage::SelectPrevious))
+            }
+            keyboard::Key::Named(keyboard::key::Named::Enter) => {
+                Some(Message::FileExplorer(FileExplorerMessage::ExpandCollapseCurrent))
             }
             _ => None,
         })
