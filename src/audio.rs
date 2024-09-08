@@ -1,4 +1,10 @@
-use std::{fs::File, io::BufReader, path::{Path, PathBuf}, sync::mpsc::Sender, thread::{spawn, JoinHandle}};
+use std::{
+    fs::File,
+    io::BufReader,
+    path::{Path, PathBuf},
+    sync::mpsc::Sender,
+    thread::{spawn, JoinHandle},
+};
 
 pub enum Command {
     Play(PathBuf),
@@ -13,7 +19,11 @@ pub struct Audio {
 impl Drop for Audio {
     fn drop(&mut self) {
         self.command_sender.take();
-        self.join_handle.take().unwrap().join().expect("thread should stop");
+        self.join_handle
+            .take()
+            .unwrap()
+            .join()
+            .expect("thread should stop");
     }
 }
 
@@ -31,17 +41,17 @@ impl Audio {
                         println!("Play {}", file_path.display());
 
                         sink.clear();
-                        
+
                         if let Ok(file) = File::open(file_path) {
                             if let Ok(source) = rodio::Decoder::new(BufReader::new(file)) {
                                 sink.append(source);
                                 sink.play();
                             }
                         }
-                    },
+                    }
                     Command::Stop => {
                         sink.stop();
-                    },
+                    }
                 }
             }
 
@@ -57,10 +67,18 @@ impl Audio {
     pub fn play(&self, path: impl AsRef<Path>) {
         let path = path.as_ref().to_path_buf();
 
-        self.command_sender.as_ref().unwrap().send(Command::Play(path)).unwrap();
+        self.command_sender
+            .as_ref()
+            .unwrap()
+            .send(Command::Play(path))
+            .unwrap();
     }
 
     pub fn stop(&self) {
-        self.command_sender.as_ref().unwrap().send(Command::Stop).unwrap();
+        self.command_sender
+            .as_ref()
+            .unwrap()
+            .send(Command::Stop)
+            .unwrap();
     }
 }
