@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use audio::Audio;
-use file_explorer::{ContainerStatus, NewEntry, FileExplorerMessage, FileExplorerModel, NodeId};
+use file_explorer::{ContainerStatus, FileExplorerMessage, FileExplorerModel, NewEntry, NodeId};
 use iced::{futures::StreamExt, keyboard, Element, Font, Subscription, Task};
 use rfd::AsyncFileDialog;
 
@@ -145,9 +145,9 @@ impl SEx {
             keyboard::Key::Named(keyboard::key::Named::ArrowUp) => {
                 Some(Message::FileExplorer(FileExplorerMessage::SelectPrevious))
             }
-            keyboard::Key::Named(keyboard::key::Named::Enter) => {
-                Some(Message::FileExplorer(FileExplorerMessage::ExpandCollapseCurrent))
-            }
+            keyboard::Key::Named(keyboard::key::Named::Enter) => Some(Message::FileExplorer(
+                FileExplorerMessage::ExpandCollapseCurrent,
+            )),
             _ => None,
         })
     }

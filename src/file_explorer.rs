@@ -1,9 +1,16 @@
 use std::{
-    cell::RefCell, collections::{BTreeMap, VecDeque}, ops::{Deref, DerefMut}, path::PathBuf, rc::{Rc, Weak}, usize
+    cell::RefCell,
+    collections::{BTreeMap, VecDeque},
+    ops::DerefMut,
+    path::PathBuf,
+    rc::{Rc, Weak},
+    usize,
 };
 
 use iced::{
-    alignment::Vertical, widget::{container, row, scrollable, svg, text, Column, MouseArea, Space}, Element, Length, Padding, Task, Theme
+    alignment::Vertical,
+    widget::{container, row, scrollable, svg, text, Column, MouseArea, Space},
+    Element, Length, Padding, Task, Theme,
 };
 
 use crate::{load_directory_entries, Message};
@@ -89,7 +96,7 @@ fn make_selectable_part<'a>(
 ) -> Element<'a, Message> {
     const FONT_SIZE: u16 = 14;
 
-    let text = |path_component|text(path_component).size(FONT_SIZE);
+    let text = |path_component| text(path_component).size(FONT_SIZE);
 
     let node = &*model.index.get(&id).unwrap().borrow();
     let selectable_part: Element<Message> = match node {
@@ -115,7 +122,9 @@ fn make_selectable_part<'a>(
 
             let svg = container(svg).padding(Padding::from([0, 4]));
 
-            row![svg, text(path_component.clone())].align_y(Vertical::Center).into()
+            row![svg, text(path_component.clone())]
+                .align_y(Vertical::Center)
+                .into()
         }
         Node::File { path_component, .. } => text(path_component.clone()).into(),
     };
@@ -396,19 +405,27 @@ impl FileExplorerModel {
     }
 
     pub fn next(&self, id: NodeId) -> Option<NodeId> {
-        let (index, _) = self.linear_index.iter().enumerate().find(|(_index, (node_id, _))|node_id == &id)?;
-        
-        self.linear_index.get(index + 1).map(|(id, _)|*id)
+        let (index, _) = self
+            .linear_index
+            .iter()
+            .enumerate()
+            .find(|(_index, (node_id, _))| node_id == &id)?;
+
+        self.linear_index.get(index + 1).map(|(id, _)| *id)
     }
 
     pub fn previous(&self, id: NodeId) -> Option<NodeId> {
-        let (index, _) = self.linear_index.iter().enumerate().find(|(_index, (node_id, _))|node_id == &id)?;
-        
+        let (index, _) = self
+            .linear_index
+            .iter()
+            .enumerate()
+            .find(|(_index, (node_id, _))| node_id == &id)?;
+
         if index == 0 {
-            return None
+            return None;
         }
 
-        self.linear_index.get(index - 1).map(|(id, _)|*id)
+        self.linear_index.get(index - 1).map(|(id, _)| *id)
     }
 
     pub fn path_component(&self, id: NodeId) -> Option<String> {
@@ -434,21 +451,25 @@ impl FileExplorerModel {
     pub fn expand_collapse(&mut self, id: NodeId) -> Option<Task<Message>> {
         if let Some(node) = self.index.get(&id) {
             // HACK: I create the path here BEFORE I borrow the node mutably because
-            // path also borrows the node. I think I should maybe not have the whole Node
-            // possibly mutable (not using RefCell<Node> but just Node). What needs to be mutable 
+            // path also borrows the node, but I should create the path only when the status is
+            // NotLoaded. I think I should maybe not have the whole Node
+            // possibly mutable (not using RefCell<Node> but just Node). What needs to be mutable
             // are the fields children, and the status of Node::Directory.
             let path = self.path(id);
 
-            if let Node::Directory { status, .. } = node.borrow_mut().deref_mut(){
+            if let Node::Directory { status, .. } = node.borrow_mut().deref_mut() {
                 match status {
                     ContainerStatus::Expanded => *status = ContainerStatus::Collapsed,
                     ContainerStatus::Collapsed => *status = ContainerStatus::Expanded,
                     ContainerStatus::NotLoaded => {
-                        
-                        
-                        return Some(Task::perform(load_directory_entries(path), move |entries| {
-                            Message::FileExplorer(FileExplorerMessage::ChildrenLoaded(id, entries))
-                        }))
+                        return Some(Task::perform(
+                            load_directory_entries(path),
+                            move |entries| {
+                                Message::FileExplorer(FileExplorerMessage::ChildrenLoaded(
+                                    id, entries,
+                                ))
+                            },
+                        ))
                     }
                     _ => (),
                 }
