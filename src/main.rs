@@ -1,17 +1,18 @@
 use std::path::{Path, PathBuf};
 
 use audio::Audio;
-use file_explorer::{ContainerStatus, EntryFound, FileExplorerMessage, FileExplorerModel};
-use iced::{futures::StreamExt, Element, Font, Task};
+use file_explorer::{ContainerStatus, NewEntry, FileExplorerMessage, FileExplorerModel, NodeId};
+use iced::{futures::StreamExt, keyboard, Element, Font, Subscription, Task};
 use rfd::AsyncFileDialog;
 
-mod file_explorer;
 mod audio;
+mod file_explorer;
 
 fn main() -> iced::Result {
     iced::application("SEx", SEx::update, SEx::view)
         .font(include_bytes!("../fonts/SF-Pro.ttf").as_slice())
         .default_font(Font::with_name("SF Pro"))
+        .subscription(SEx::subscription)
         .run_with(SEx::new)
 }
 
@@ -29,7 +30,10 @@ struct SEx {
 impl SEx {
     fn new() -> (Self, Task<Message>) {
         (
-            Self { model: None, audio: Audio::new() },
+            Self {
+                model: None,
+                audio: Audio::new(),
+            },
             Task::perform(select_existing_directory(), Message::OpenDirectory),
         )
     }
@@ -56,44 +60,40 @@ impl SEx {
             }
             Message::FileExplorer(FileExplorerMessage::ChildrenLoaded(parent_id, new_entries)) => {
                 if let Some(model) = self.model.as_mut() {
-                    for new_entry in new_entries {
-                        match new_entry {
-                            EntryFound::File { path_component } => {
-                                model.add_leaf(parent_id, path_component);
-                            }
-                            EntryFound::Directory { path_component } => {
-                                model.add_container(parent_id, path_component);
-                            }
-                        }
-                    }
-
-                    model.set_status(parent_id, ContainerStatus::Expanded);
+                    model.add(parent_id, new_entries);
+                    model.update_linear_index();
                 }
             }
             Message::FileExplorer(FileExplorerMessage::Collapse(id)) => {
                 if let Some(model) = self.model.as_mut() {
                     model.set_status(id, ContainerStatus::Collapsed);
+                    model.update_linear_index();
                 }
             }
             Message::FileExplorer(FileExplorerMessage::Expand(id)) => {
                 if let Some(model) = self.model.as_mut() {
                     model.set_status(id, ContainerStatus::Expanded);
+                    model.update_linear_index();
                 }
             }
             Message::FileExplorer(FileExplorerMessage::Select(id)) => {
+                self.set_selection(id);
+            }
+            Message::FileExplorer(FileExplorerMessage::SelectNext) => {
                 if let Some(model) = self.model.as_mut() {
-                    model.set_selection(id);
-
-                    if let Some(id) = id {
-                        let path = model.path(id);
-                        
-                        if path.is_file() && is_file_contains_audio(&path) {
-                            self.audio.play(path);
-                        } else {
-                            self.audio.stop();
+                    if let Some(current_id) = model.selection() {
+                        if let Some(id) = model.next(current_id) {
+                            self.set_selection(Some(id));
                         }
-                    } else {
-                        self.audio.stop();
+                    }
+                }
+            }
+            Message::FileExplorer(FileExplorerMessage::SelectPrevious) => {
+                if let Some(model) = self.model.as_mut() {
+                    if let Some(current_id) = model.selection() {
+                        if let Some(id) = model.previous(current_id) {
+                            self.set_selection(Some(id));
+                        }
                     }
                 }
             }
@@ -102,15 +102,48 @@ impl SEx {
         Task::none()
     }
 
+    fn set_selection(&mut self, id: Option<NodeId>) {
+        if let Some(model) = self.model.as_mut() {
+            model.set_selection(id);
+
+            if let Some(id) = id {
+                let path = model.path(id);
+
+                if path.is_file() && is_file_contains_audio(&path) {
+                    self.audio.play(path);
+                } else {
+                    self.audio.stop();
+                }
+            } else {
+                self.audio.stop();
+            }
+        }
+    }
+
     fn view(&self) -> Element<Message> {
         file_explorer::view(self.model.as_ref())
+    }
+
+    fn subscription(&self) -> Subscription<Message> {
+        keyboard::on_key_press(|key, _modifiers| match key {
+            keyboard::Key::Named(keyboard::key::Named::ArrowDown) => {
+                Some(Message::FileExplorer(FileExplorerMessage::SelectNext))
+            }
+            keyboard::Key::Named(keyboard::key::Named::ArrowUp) => {
+                Some(Message::FileExplorer(FileExplorerMessage::SelectPrevious))
+            }
+            _ => None,
+        })
     }
 }
 
 fn is_file_contains_audio(path: impl AsRef<Path>) -> bool {
     let mime_guess = mime_guess::from_path(path);
 
-    mime_guess.iter().find(|mime|mime.type_() == mime::AUDIO).is_some()
+    mime_guess
+        .iter()
+        .find(|mime| mime.type_() == mime::AUDIO)
+        .is_some()
 }
 
 async fn select_existing_directory() -> Option<PathBuf> {
@@ -120,7 +153,7 @@ async fn select_existing_directory() -> Option<PathBuf> {
         .map(|fh| fh.path().to_path_buf())
 }
 
-async fn load_directory_entries(directory_path: PathBuf) -> Vec<EntryFound> {
+async fn load_directory_entries(directory_path: PathBuf) -> Vec<NewEntry> {
     let mut results = Vec::new();
 
     if let Ok(mut dir_entries) = async_std::fs::read_dir(directory_path).await {
@@ -128,11 +161,11 @@ async fn load_directory_entries(directory_path: PathBuf) -> Vec<EntryFound> {
             if let Ok(entry) = res {
                 if let Ok(metadata) = entry.metadata().await {
                     if metadata.is_dir() {
-                        results.push(EntryFound::Directory {
+                        results.push(NewEntry::Directory {
                             path_component: entry.file_name().into_string().unwrap(),
                         });
                     } else if metadata.is_file() {
-                        results.push(EntryFound::File {
+                        results.push(NewEntry::File {
                             path_component: entry.file_name().into_string().unwrap(),
                         });
                     }

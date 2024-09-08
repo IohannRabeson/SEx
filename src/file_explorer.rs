@@ -1,13 +1,9 @@
 use std::{
-    cell::RefCell,
-    collections::{BTreeMap, VecDeque},
-    path::PathBuf,
-    rc::{Rc, Weak},
-    usize,
+    cell::RefCell, collections::{BTreeMap, VecDeque}, path::PathBuf, rc::{Rc, Weak}, usize
 };
 
 use iced::{
-    widget::{container, row, column, scrollable, svg, text, Column, MouseArea, Space}, Element, Length, Padding, Theme
+    alignment::Vertical, widget::{container, row, scrollable, svg, text, Column, MouseArea, Space}, Element, Length, Padding, Theme
 };
 
 use crate::Message;
@@ -15,14 +11,16 @@ use crate::Message;
 #[derive(Debug, Clone)]
 pub enum FileExplorerMessage {
     RequestLoad(NodeId, PathBuf),
-    ChildrenLoaded(NodeId, Vec<EntryFound>),
+    ChildrenLoaded(NodeId, Vec<NewEntry>),
     Collapse(NodeId),
     Expand(NodeId),
     Select(Option<NodeId>),
+    SelectNext,
+    SelectPrevious,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum EntryFound {
+pub enum NewEntry {
     Directory { path_component: String },
     File { path_component: String },
 }
@@ -51,21 +49,21 @@ pub fn view(tree: Option<&FileExplorerModel>) -> Element<Message> {
     let mut main_column = Column::new();
 
     if let Some(tree) = tree {
-        for (id, depth) in tree.dfs_visit() {
-            if id == tree.root_id() {
+        for (id, depth) in tree.linear_visit() {
+            if id == &tree.root_id() {
                 continue;
             }
-            let status = tree.status(id).unwrap();
+            let status = tree.status(*id).unwrap();
             let selectable_part = make_selectable_part(
                 &tree,
-                id,
+                *id,
                 tree.folder_closed_icon.clone(),
                 tree.folder_open_icon.clone(),
             );
 
             let row = row![
-                Space::new(Length::Fixed(depth as f32 * DEPTH_OFFSET), Length::Shrink),
-                show_children_control(&tree, id, status),
+                Space::new(Length::Fixed(*depth as f32 * DEPTH_OFFSET), Length::Shrink),
+                show_children_control(&tree, *id, status),
                 Space::new(Length::Fixed(5f32), Length::Shrink),
                 selectable_part,
             ];
@@ -88,40 +86,39 @@ fn make_selectable_part<'a>(
     folder: svg::Handle,
     folder_open: svg::Handle,
 ) -> Element<'a, Message> {
+    const FONT_SIZE: u16 = 14;
+
+    let text = |path_component|text(path_component).size(FONT_SIZE);
+
     let node = &*model.index.get(&id).unwrap().borrow();
     let selectable_part: Element<Message> = match node {
-        Node::Root { path_component, .. } => {
-            text(path_component.clone()).into()
-        },
-        Node::Directory { path_component, status, .. } => {
+        Node::Root { path_component, .. } => text(path_component.clone()).into(),
+        Node::Directory {
+            path_component,
+            status,
+            ..
+        } => {
             const SVG_ICON_SIZE: f32 = 20f32;
-            const SVG_VERTICAL_OFFSET: f32 = 0f32;
 
             let svg = svg(match status {
                 ContainerStatus::NotLoaded
                 | ContainerStatus::Collapsed
-                | ContainerStatus::Empty => {
-                    folder
-                },
+                | ContainerStatus::Empty => folder,
                 ContainerStatus::Expanded => folder_open,
-            }).width(Length::Fixed(SVG_ICON_SIZE))
+            })
+            .width(Length::Fixed(SVG_ICON_SIZE))
             .height(Length::Fixed(SVG_ICON_SIZE))
-            .style(|theme: &Theme, _status|{
-                svg::Style {
-                    color: Some(theme.palette().text)
-                }
+            .style(|theme: &Theme, _status| svg::Style {
+                color: Some(theme.palette().text),
             });
-            let svg = column![Space::new(Length::Shrink, Length::Fixed(SVG_VERTICAL_OFFSET)), svg];
+
             let svg = container(svg).padding(Padding::from([0, 4]));
 
-            row![svg, text(path_component.clone())].into()
-        },
-        Node::File { path_component, .. } => {
-            text(path_component.clone()).into()
-        },
+            row![svg, text(path_component.clone())].align_y(Vertical::Center).into()
+        }
+        Node::File { path_component, .. } => text(path_component.clone()).into(),
     };
-    
-    // row![Svg::new(), text(path_component)];
+
     let mut selectable_part = container(selectable_part);
 
     if model.selection.is_some_and(|selection| selection == id) {
@@ -129,8 +126,8 @@ fn make_selectable_part<'a>(
     }
 
     MouseArea::new(selectable_part)
-       .on_press(Message::FileExplorer(FileExplorerMessage::Select(Some(id))))
-       .into()
+        .on_press(Message::FileExplorer(FileExplorerMessage::Select(Some(id))))
+        .into()
 }
 
 fn show_children_control(
@@ -262,6 +259,7 @@ impl Node {
 pub struct FileExplorerModel {
     root: Rc<RefCell<Node>>,
     index: BTreeMap<NodeId, Rc<RefCell<Node>>>,
+    linear_index: Vec<(NodeId, usize)>,
     next_node_id: usize,
     selection: Option<NodeId>,
     folder_open_icon: svg::Handle,
@@ -286,8 +284,13 @@ impl FileExplorerModel {
             root,
             next_node_id,
             selection: None,
-            folder_closed_icon: svg::Handle::from_memory(include_bytes!("../icons/folder-svgrepo-com.svg")),
-            folder_open_icon: svg::Handle::from_memory(include_bytes!("../icons/folder-open-side-svgrepo-com.svg")),
+            folder_closed_icon: svg::Handle::from_memory(include_bytes!(
+                "../icons/folder-svgrepo-com.svg"
+            )),
+            folder_open_icon: svg::Handle::from_memory(include_bytes!(
+                "../icons/folder-open-side-svgrepo-com.svg"
+            )),
+            linear_index: Vec::new(),
         }
     }
 
@@ -301,7 +304,24 @@ impl FileExplorerModel {
         }
     }
 
-    pub fn add_container(&mut self, parent: NodeId, path_component: String) -> NodeId {
+    pub fn add(&mut self, parent_id: NodeId, entries: Vec<NewEntry>) {
+        for new_entry in entries {
+            match new_entry {
+                NewEntry::File { path_component } => {
+                    self.add_leaf(parent_id, path_component);
+                }
+                NewEntry::Directory { path_component } => {
+                    self.add_container(parent_id, path_component);
+                }
+            }
+        }
+
+        self.set_status(parent_id, ContainerStatus::Expanded);
+    }
+
+    /// Adding a node changes the tree structure so
+    /// linear index must be updated using update_linear_index().
+    fn add_container(&mut self, parent: NodeId, path_component: String) -> NodeId {
         let new_node_id = NodeId(self.next_node_id);
         self.next_node_id += 1;
         let parent_node = self.index.get(&parent).unwrap();
@@ -323,7 +343,9 @@ impl FileExplorerModel {
         new_node_id
     }
 
-    pub fn add_leaf(&mut self, parent: NodeId, path_component: String) -> NodeId {
+    /// Adding a node changes the tree structure so
+    /// linear index must be updated using update_linear_index().
+    fn add_leaf(&mut self, parent: NodeId, path_component: String) -> NodeId {
         let new_node_id = NodeId(self.next_node_id);
         self.next_node_id += 1;
         let parent_node = self.index.get(&parent).unwrap();
@@ -343,13 +365,18 @@ impl FileExplorerModel {
         new_node_id
     }
 
-    pub fn dfs_visit(&self) -> Vec<(NodeId, usize)> {
+    /// You must call update_linear_index() to ensure the data is up to date.
+    pub fn linear_visit(&self) -> impl Iterator<Item = &(NodeId, usize)> {
+        self.linear_index.iter()
+    }
+
+    pub fn update_linear_index(&mut self) {
         let initial_depth = 0;
         let mut stack = VecDeque::from([(self.root_id(), initial_depth)]);
-        let mut results = Vec::new();
 
+        self.linear_index.clear();
         while let Some((current, current_depth)) = stack.pop_front() {
-            results.push((current, current_depth));
+            self.linear_index.push((current, current_depth));
 
             let current_node = self.index.get(&current).unwrap();
 
@@ -359,8 +386,6 @@ impl FileExplorerModel {
                 }
             }
         }
-
-        results
     }
 
     pub fn parent(&self, id: NodeId) -> Option<NodeId> {
@@ -369,12 +394,30 @@ impl FileExplorerModel {
         node.borrow().parent()
     }
 
+    pub fn next(&self, id: NodeId) -> Option<NodeId> {
+        let (index, _) = self.linear_index.iter().enumerate().find(|(_index, (node_id, _))|node_id == &id)?;
+        
+        self.linear_index.get(index + 1).map(|(id, _)|*id)
+    }
+
+    pub fn previous(&self, id: NodeId) -> Option<NodeId> {
+        let (index, _) = self.linear_index.iter().enumerate().find(|(_index, (node_id, _))|node_id == &id)?;
+        
+        if index == 0 {
+            return None
+        }
+
+        self.linear_index.get(index - 1).map(|(id, _)|*id)
+    }
+
     pub fn path_component(&self, id: NodeId) -> Option<String> {
         let node = self.index.get(&id)?;
 
         Some(node.borrow().path_component())
     }
 
+    /// Changing the status changes the structure of the tree so
+    /// linear index must be updated using update_linear_index().
     pub fn set_status(&mut self, id: NodeId, status: ContainerStatus) {
         let node = self.index.get(&id).unwrap();
 
@@ -409,5 +452,9 @@ impl FileExplorerModel {
 
     pub fn set_selection(&mut self, selection: Option<NodeId>) {
         self.selection = selection;
+    }
+
+    pub fn selection(&self) -> Option<NodeId> {
+        self.selection
     }
 }
