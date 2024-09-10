@@ -1,7 +1,7 @@
 use std::{
     cell::RefCell,
     collections::{BTreeMap, VecDeque},
-    ops::DerefMut,
+    ops::Deref,
     path::PathBuf,
     rc::{Rc, Weak},
     usize,
@@ -448,20 +448,15 @@ impl FileExplorerModel {
         Some(node.borrow().status())
     }
 
-    pub fn expand_collapse(&mut self, id: NodeId) -> Option<Task<Message>> {
+    pub fn expand_collapse(&self, id: NodeId) -> Option<Task<Message>> {
         if let Some(node) = self.index.get(&id) {
-            // HACK: I create the path here BEFORE I borrow the node mutably because
-            // path also borrows the node, but I should create the path only when the status is
-            // NotLoaded. I think I should maybe not have the whole Node
-            // possibly mutable (not using RefCell<Node> but just Node). What needs to be mutable
-            // are the fields children, and the status of Node::Directory.
-            let path = self.path(id);
-
-            if let Node::Directory { status, .. } = node.borrow_mut().deref_mut() {
+            if let Node::Directory { status, .. } = node.borrow().deref() {
                 match status {
-                    ContainerStatus::Expanded => *status = ContainerStatus::Collapsed,
-                    ContainerStatus::Collapsed => *status = ContainerStatus::Expanded,
+                    ContainerStatus::Expanded => return Some(Task::done(Message::FileExplorer(FileExplorerMessage::Collapse(id)))),
+                    ContainerStatus::Collapsed => return Some(Task::done(Message::FileExplorer(FileExplorerMessage::Expand(id)))),
                     ContainerStatus::NotLoaded => {
+                        let path = self.path(id);
+
                         return Some(Task::perform(
                             load_directory_entries(path),
                             move |entries| {
