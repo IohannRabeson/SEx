@@ -452,8 +452,16 @@ impl FileExplorerModel {
         if let Some(node) = self.index.get(&id) {
             if let Node::Directory { status, .. } = node.borrow().deref() {
                 match status {
-                    ContainerStatus::Expanded => return Some(Task::done(Message::FileExplorer(FileExplorerMessage::Collapse(id)))),
-                    ContainerStatus::Collapsed => return Some(Task::done(Message::FileExplorer(FileExplorerMessage::Expand(id)))),
+                    ContainerStatus::Expanded => {
+                        return Some(Task::done(Message::FileExplorer(
+                            FileExplorerMessage::Collapse(id),
+                        )))
+                    }
+                    ContainerStatus::Collapsed => {
+                        return Some(Task::done(Message::FileExplorer(
+                            FileExplorerMessage::Expand(id),
+                        )))
+                    }
                     ContainerStatus::NotLoaded => {
                         let path = self.path(id);
 
@@ -464,7 +472,7 @@ impl FileExplorerModel {
                                     id, entries,
                                 ))
                             },
-                        ))
+                        ));
                     }
                     _ => (),
                 }

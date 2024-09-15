@@ -1,10 +1,14 @@
-use std::path::PathBuf;
 use async_std::fs::DirEntry;
 use iced::{
     futures::{
-        channel::mpsc::{self, Sender}, stream::Stream, FutureExt, SinkExt, StreamExt
-    }, widget::{scrollable, text, text_input, Column}, Element, Length, Subscription, Task
+        channel::mpsc::{self, Sender},
+        stream::Stream,
+        FutureExt, SinkExt, StreamExt,
+    },
+    widget::{scrollable, text, text_input, Column},
+    Element, Length, Subscription, Task,
 };
+use std::path::PathBuf;
 
 use crate::{Message, View};
 
@@ -73,7 +77,11 @@ impl Search {
                     command_sender.try_send(SearchCommand::Clear).unwrap();
                     *view = View::Explorer;
                 } else {
-                    let command = SearchCommand::Search(text, self.root_path.clone(), self.search_options.clone());
+                    let command = SearchCommand::Search(
+                        text,
+                        self.root_path.clone(),
+                        self.search_options.clone(),
+                    );
 
                     command_sender.try_send(command).unwrap()
                 };
@@ -89,10 +97,10 @@ impl Search {
                 println!("Search started");
                 self.results.clear();
                 *view = View::Search;
-            },
+            }
             SearchMessage::SearchFinished => {
                 println!("Search finished");
-            },
+            }
             SearchMessage::ClearResults => {
                 self.results.clear();
             }
@@ -123,17 +131,22 @@ fn accept_entry(entry: &DirEntry, searched: &str, options: &SearchOptions) -> bo
             let accept = if options.case_sensitive {
                 filename.contains(searched)
             } else {
-                filename.contains(searched) || filename.to_lowercase().contains(&searched.to_lowercase())
+                filename.contains(searched)
+                    || filename.to_lowercase().contains(&searched.to_lowercase())
             };
 
-            return accept
+            return accept;
         }
     }
 
     false
 }
 
-async fn search_filesystem(stack: &mut Vec<PathBuf>, searched: &str, options: &SearchOptions) -> Vec<PathBuf> {
+async fn search_filesystem(
+    stack: &mut Vec<PathBuf>,
+    searched: &str,
+    options: &SearchOptions,
+) -> Vec<PathBuf> {
     let mut results: Vec<PathBuf> = Vec::new();
 
     if let Some(current_path) = stack.pop() {
@@ -154,7 +167,7 @@ async fn search_filesystem(stack: &mut Vec<PathBuf>, searched: &str, options: &S
             }
         }
     }
-    
+
     results
 }
 
@@ -168,14 +181,17 @@ fn search_new() -> impl Stream<Item = SearchMessage> {
         let mut state = SearchState::Idle;
 
         output
-                .send(SearchMessage::Initialized(command_sender))
-                .await.unwrap();
+            .send(SearchMessage::Initialized(command_sender))
+            .await
+            .unwrap();
 
         loop {
             match &mut state {
                 SearchState::Idle => {
                     println!("Waiting for search command");
-                    if let Some(SearchCommand::Search(searched, root_directory, options)) = command_receiver.next().await {
+                    if let Some(SearchCommand::Search(searched, root_directory, options)) =
+                        command_receiver.next().await
+                    {
                         state = SearchState::Search(searched, vec![root_directory], options);
                     }
                 }
@@ -185,28 +201,31 @@ fn search_new() -> impl Stream<Item = SearchMessage> {
                             SearchCommand::Search(searched, root_directory, options) => {
                                 println!("Search {}", searched);
 
-                                state = SearchState::Search(searched, vec![root_directory], options);
+                                state =
+                                    SearchState::Search(searched, vec![root_directory], options);
                                 output.send(SearchMessage::SearchStarted).await.unwrap();
-                            },
+                            }
                             SearchCommand::Clear => {
                                 state = SearchState::Idle;
                                 output.send(SearchMessage::ClearResults).await.unwrap();
                                 println!("Search cleared");
-                            },
+                            }
                         }
-                    }
-                    else {
+                    } else {
                         if directories_to_visit.is_empty() {
                             output.send(SearchMessage::SearchFinished).await.unwrap();
                             state = SearchState::Idle;
-                        } 
-                        else {
-                            let results = search_filesystem(directories_to_visit, searched, options).await;
+                        } else {
+                            let results =
+                                search_filesystem(directories_to_visit, searched, options).await;
 
-                            output.send(SearchMessage::FoundResults(results)).await.unwrap();
+                            output
+                                .send(SearchMessage::FoundResults(results))
+                                .await
+                                .unwrap();
                         }
                     }
-                },
+                }
             }
         }
     })

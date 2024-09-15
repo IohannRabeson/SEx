@@ -2,7 +2,9 @@ use std::path::{Path, PathBuf};
 
 use audio::Audio;
 use file_explorer::{ContainerStatus, FileExplorerMessage, FileExplorerModel, NewEntry, NodeId};
-use iced::{futures::StreamExt, keyboard, widget::column, Element, Font, Length, Subscription, Task};
+use iced::{
+    futures::StreamExt, keyboard, widget::column, Element, Font, Length, Subscription, Task,
+};
 use rfd::AsyncFileDialog;
 use search::{Search, SearchMessage};
 
@@ -152,20 +154,17 @@ impl SEx {
 
     fn view(&self) -> Element<Message> {
         match self.view {
-            View::Explorer => {
-                column![
-                    self.search.view_input(),
-                    file_explorer::view(self.model.as_ref())
-                ].width(Length::Fill).height(Length::Fill)
-                .into()
-            },
-            View::Search => {
-                column![
-                    self.search.view_input(),
-                    self.search.view_results(),
-                ].width(Length::Fill).height(Length::Fill)
-                .into()
-            },
+            View::Explorer => column![
+                self.search.view_input(),
+                file_explorer::view(self.model.as_ref())
+            ]
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .into(),
+            View::Search => column![self.search.view_input(), self.search.view_results(),]
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .into(),
         }
     }
 
