@@ -2,11 +2,13 @@ use std::path::{Path, PathBuf};
 
 use audio::Audio;
 use file_explorer::{ContainerStatus, FileExplorerMessage, FileExplorerModel, NewEntry, NodeId};
-use iced::{futures::StreamExt, keyboard, Element, Font, Subscription, Task};
+use iced::{futures::StreamExt, keyboard, widget::column, Element, Font, Length, Subscription, Task};
 use rfd::AsyncFileDialog;
+use search::{Search, SearchMessage};
 
 mod audio;
 mod file_explorer;
+mod search;
 
 fn main() -> iced::Result {
     iced::application("SEx", SEx::update, SEx::view)
@@ -20,11 +22,19 @@ fn main() -> iced::Result {
 enum Message {
     OpenDirectory(Option<PathBuf>),
     FileExplorer(FileExplorerMessage),
+    Search(SearchMessage),
+}
+
+enum View {
+    Explorer,
+    Search,
 }
 
 struct SEx {
     model: Option<FileExplorerModel>,
     audio: Audio,
+    search: Search,
+    view: View,
 }
 
 impl SEx {
@@ -33,6 +43,8 @@ impl SEx {
             Self {
                 model: None,
                 audio: Audio::new(),
+                search: Search::new(),
+                view: View::Explorer,
             },
             Task::perform(select_existing_directory(), Message::OpenDirectory),
         )
@@ -47,7 +59,9 @@ impl SEx {
                     let model = FileExplorerModel::new(path.display().to_string());
                     let root = model.root_id();
 
+                    self.search.set_root_path(path.clone());
                     self.model = Some(model);
+
                     return Task::perform(load_directory_entries(path), move |entries| {
                         Message::FileExplorer(FileExplorerMessage::ChildrenLoaded(root, entries))
                     });
@@ -110,6 +124,9 @@ impl SEx {
                     }
                 }
             }
+            Message::Search(message) => {
+                return self.search.update(message, &mut self.view);
+            }
         }
 
         Task::none()
@@ -134,22 +151,40 @@ impl SEx {
     }
 
     fn view(&self) -> Element<Message> {
-        file_explorer::view(self.model.as_ref())
+        match self.view {
+            View::Explorer => {
+                column![
+                    self.search.view_input(),
+                    file_explorer::view(self.model.as_ref())
+                ].width(Length::Fill).height(Length::Fill)
+                .into()
+            },
+            View::Search => {
+                column![
+                    self.search.view_input(),
+                    self.search.view_results(),
+                ].width(Length::Fill).height(Length::Fill)
+                .into()
+            },
+        }
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        keyboard::on_key_press(|key, _modifiers| match key {
-            keyboard::Key::Named(keyboard::key::Named::ArrowDown) => {
-                Some(Message::FileExplorer(FileExplorerMessage::SelectNext))
-            }
-            keyboard::Key::Named(keyboard::key::Named::ArrowUp) => {
-                Some(Message::FileExplorer(FileExplorerMessage::SelectPrevious))
-            }
-            keyboard::Key::Named(keyboard::key::Named::Enter) => Some(Message::FileExplorer(
-                FileExplorerMessage::ExpandCollapseCurrent,
-            )),
-            _ => None,
-        })
+        Subscription::batch([
+            keyboard::on_key_press(|key, _modifiers| match key {
+                keyboard::Key::Named(keyboard::key::Named::ArrowDown) => {
+                    Some(Message::FileExplorer(FileExplorerMessage::SelectNext))
+                }
+                keyboard::Key::Named(keyboard::key::Named::ArrowUp) => {
+                    Some(Message::FileExplorer(FileExplorerMessage::SelectPrevious))
+                }
+                keyboard::Key::Named(keyboard::key::Named::Enter) => Some(Message::FileExplorer(
+                    FileExplorerMessage::ExpandCollapseCurrent,
+                )),
+                _ => None,
+            }),
+            self.search.subscription(),
+        ])
     }
 }
 
