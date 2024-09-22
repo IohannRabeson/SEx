@@ -13,7 +13,7 @@ mod file_explorer;
 mod search;
 
 fn main() -> iced::Result {
-    iced::application("SEx", SEx::update, SEx::view)
+    iced::application("SEx Sample Explorer", SEx::update, SEx::view)
         .font(include_bytes!("../fonts/SF-Pro.ttf").as_slice())
         .default_font(Font::with_name("SF Pro"))
         .subscription(SEx::subscription)
