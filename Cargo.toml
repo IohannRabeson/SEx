@@ -6,7 +6,7 @@ edition = "2021"
 
 [dependencies]
 async-std = "1.12.0"
-iced = { git = "https://github.com/iced-rs/iced.git", features = ["async-std", "svg"] }
+iced = { git = "https://github.com/iced-rs/iced.git", features = ["async-std", "svg", "canvas"] }
 mime = "0.3.17"
 mime_guess = "2.0.5"
 rfd = "0.15.0"

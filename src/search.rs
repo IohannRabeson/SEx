@@ -177,7 +177,7 @@ enum SearchState {
 }
 fn search_new() -> impl Stream<Item = SearchMessage> {
     iced::stream::channel(20, |mut output| async move {
-        let (command_sender, mut command_receiver) = mpsc::channel::<SearchCommand>(1000);
+        let (command_sender, mut command_receiver) = mpsc::channel::<SearchCommand>(16);
         let mut state = SearchState::Idle;
 
         output

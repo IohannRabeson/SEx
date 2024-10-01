@@ -3,14 +3,19 @@ use std::path::{Path, PathBuf};
 use audio::Audio;
 use file_explorer::{ContainerStatus, FileExplorerMessage, FileExplorerModel, NewEntry, NodeId};
 use iced::{
-    futures::StreamExt, keyboard, widget::column, Element, Font, Length, Subscription, Task,
+    futures::StreamExt,
+    keyboard,
+    widget::{column, pane_grid, PaneGrid},
+    Element, Font, Length, Subscription, Task,
 };
 use rfd::AsyncFileDialog;
 use search::{Search, SearchMessage};
+use waveform::{Waveform, WaveformMessage};
 
 mod audio;
 mod file_explorer;
 mod search;
+mod waveform;
 
 fn main() -> iced::Result {
     iced::application("SEx Sample Explorer", SEx::update, SEx::view)
@@ -25,6 +30,8 @@ enum Message {
     OpenDirectory(Option<PathBuf>),
     FileExplorer(FileExplorerMessage),
     Search(SearchMessage),
+    Waveform(WaveformMessage),
+    PaneResized(pane_grid::ResizeEvent),
 }
 
 enum View {
@@ -32,21 +39,40 @@ enum View {
     Search,
 }
 
+enum PaneState {
+    Explorer,
+    Waveform,
+}
+
 struct SEx {
     model: Option<FileExplorerModel>,
     audio: Audio,
     search: Search,
     view: View,
+    panes: pane_grid::State<PaneState>,
+    waveform: Waveform,
 }
 
 impl SEx {
     fn new() -> (Self, Task<Message>) {
+        let (mut panes, waveform_pane) = pane_grid::State::new(PaneState::Waveform);
+
+        if let Some((_, split)) = panes.split(
+            pane_grid::Axis::Horizontal,
+            waveform_pane,
+            PaneState::Explorer,
+        ) {
+            panes.resize(split, 0.1);
+        }
+
         (
             Self {
                 model: None,
                 audio: Audio::new(),
                 search: Search::new(),
                 view: View::Explorer,
+                panes,
+                waveform: Waveform::default(),
             },
             Task::perform(select_existing_directory(), Message::OpenDirectory),
         )
@@ -129,6 +155,12 @@ impl SEx {
             Message::Search(message) => {
                 return self.search.update(message, &mut self.view);
             }
+            Message::PaneResized(pane_grid::ResizeEvent { split, ratio }) => {
+                self.panes.resize(split, ratio);
+            }
+            Message::Waveform(message) => {
+                self.waveform.update(message);
+            }
         }
 
         Task::none()
@@ -142,30 +174,42 @@ impl SEx {
                 let path = model.path(id);
 
                 if path.is_file() && is_file_contains_audio(&path) {
-                    self.audio.play(path);
+                    self.audio.play(&path);
+                    self.waveform.show(&path);
                 } else {
                     self.audio.stop();
+                    self.waveform.clear();
                 }
             } else {
                 self.audio.stop();
+                self.waveform.clear();
             }
         }
     }
 
     fn view(&self) -> Element<Message> {
-        match self.view {
-            View::Explorer => column![
-                self.search.view_input(),
-                file_explorer::view(self.model.as_ref())
-            ]
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .into(),
-            View::Search => column![self.search.view_input(), self.search.view_results(),]
+        let pane_grid = PaneGrid::new(&self.panes, |id, pane, is_maximized| match pane {
+            PaneState::Explorer => match self.view {
+                View::Explorer => column![
+                    self.search.view_input(),
+                    file_explorer::view(self.model.as_ref())
+                ]
                 .width(Length::Fill)
                 .height(Length::Fill)
                 .into(),
-        }
+                View::Search => column![self.search.view_input(), self.search.view_results(),]
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .into(),
+            },
+            PaneState::Waveform => self.waveform.view().into(),
+        });
+
+        pane_grid
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .on_resize(8, Message::PaneResized)
+            .into()
     }
 
     fn subscription(&self) -> Subscription<Message> {
@@ -183,6 +227,7 @@ impl SEx {
                 _ => None,
             }),
             self.search.subscription(),
+            self.waveform.subscription(),
         ])
     }
 }
