@@ -180,9 +180,9 @@ async fn process_command(
                 if let Ok(decoder) = Decoder::new(BufReader::new(file)) {
                     let duration = decoder.total_duration().expect("get total duration");
                     let sample_rate = decoder.sample_rate() as u128;
-                    let samples_count = duration.as_millis() * sample_rate;
-                    const DIVISOR: u128 = 1000;
-                    let samples_count = samples_count / DIVISOR + samples_count % DIVISOR;
+                    let samples_count = duration.as_nanos() * sample_rate;
+                    const DIVISOR: u128 = 1_000_000_000;
+                    let samples_count = samples_count / DIVISOR;
 
                     output
                         .send(WaveformMessage::LoadingStarted(samples_count as usize))
