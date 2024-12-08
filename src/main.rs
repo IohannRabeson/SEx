@@ -10,12 +10,12 @@ use iced::{
 };
 use rfd::AsyncFileDialog;
 use search::{Search, SearchMessage};
-use waveform::{Waveform, WaveformMessage};
+use waveform_async::{Waveform, WaveformMessage};
 
 mod audio;
 mod file_explorer;
 mod search;
-mod waveform;
+mod waveform_async;
 
 fn main() -> iced::Result {
     iced::application("SEx Sample Explorer", SEx::update, SEx::view)
