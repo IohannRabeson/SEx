@@ -124,7 +124,7 @@ fn waveform_loading() -> impl Stream<Item = WaveformMessage> {
                 }
                 State::Decoding(mut decoder, total_samples_count) => {
                     println!("Decoding");
-                    const BUFFER_SIZE: usize = 1024;
+                    const BUFFER_SIZE: usize = 44100;
                     // It's an option because I need to take the buffer when it is filled to avoid cloning it.
                     // It's safe to unwrap it because there always a buffer while decoding.
                     let mut buffer = Some(Vec::with_capacity(BUFFER_SIZE));
