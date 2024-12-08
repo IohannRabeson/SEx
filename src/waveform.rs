@@ -6,7 +6,7 @@ use std::{
 };
 
 use iced::{
-    futures::{channel::mpsc, SinkExt, Stream, StreamExt},
+    futures::{channel::mpsc, FutureExt, SinkExt, Stream, StreamExt},
     mouse,
     widget::{
         canvas::{self, Cache, Fill},
@@ -48,6 +48,10 @@ enum State {
 impl Waveform {
     pub fn show(&mut self, path: impl AsRef<Path>) {
         if let Some(sender) = self.command_sender.as_mut() {
+            sender
+                .try_send(WaveformCommand::StopLoading)
+                .unwrap();
+
             sender
                 .try_send(WaveformCommand::LoadFile(path.as_ref().to_path_buf()))
                 .unwrap();
@@ -112,23 +116,27 @@ fn waveform_loading() -> impl Stream<Item = WaveformMessage> {
         let mut state = State::Idle;
 
         loop {
-            match &mut state {
+            match state {
                 State::Idle => {
                     if let Some(command) = command_receiver.next().await {
                         state = process_command(command, &mut output).await;
                     }
                 }
-                State::Decoding(decoder, total_samples_count) => {
+                State::Decoding(mut decoder, total_samples_count) => {
                     println!("Decoding");
                     const BUFFER_SIZE: usize = 1024;
                     // It's an option because I need to take the buffer when it is filled to avoid cloning it.
                     // It's safe to unwrap it because there always a buffer while decoding.
                     let mut buffer = Some(Vec::with_capacity(BUFFER_SIZE));
 
-                    for i in 0..*total_samples_count {
+                    'outer: for i in 0..total_samples_count {
                         let mut accumulator = 0i32;
 
                         for c in 0..decoder.channels() {
+                            if let Some(WaveformCommand::StopLoading) = command_receiver.next().now_or_never().flatten() {
+                                break 'outer
+                            }
+                            
                             accumulator += match decoder.next() {
                                 Some(sample) => sample as i32,
                                 None => {
