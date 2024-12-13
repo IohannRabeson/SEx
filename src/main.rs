@@ -188,7 +188,7 @@ impl SEx {
     }
 
     fn view(&self) -> Element<Message> {
-        let pane_grid = PaneGrid::new(&self.panes, |id, pane, is_maximized| match pane {
+        let pane_grid = PaneGrid::new(&self.panes, |_id, pane, _is_maximized| match pane {
             PaneState::Explorer => match self.view {
                 View::Explorer => column![
                     self.search.view_input(),
@@ -237,8 +237,7 @@ fn is_file_contains_audio(path: impl AsRef<Path>) -> bool {
 
     mime_guess
         .iter()
-        .find(|mime| mime.type_() == mime::AUDIO)
-        .is_some()
+        .any(|mime| mime.type_() == mime::AUDIO)
 }
 
 async fn select_existing_directory() -> Option<PathBuf> {

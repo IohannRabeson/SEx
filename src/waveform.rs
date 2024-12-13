@@ -1,6 +1,5 @@
 use std::{
     fs::File,
-    i16,
     io::BufReader,
     path::{Path, PathBuf},
 };
@@ -9,7 +8,7 @@ use iced::{
     futures::{channel::mpsc, FutureExt, SinkExt, Stream, StreamExt},
     mouse,
     widget::{
-        canvas::{self, Cache, Fill},
+        canvas::{self, Cache},
         Canvas,
     },
     Element, Length, Point, Rectangle, Renderer, Size, Subscription, Theme,
@@ -42,7 +41,7 @@ pub struct Waveform {
 
 enum State {
     Idle,
-    Decoding(Decoder<BufReader<File>>, usize),
+    Decoding(Box<Decoder<BufReader<File>>>, usize),
 }
 
 impl Waveform {
@@ -197,17 +196,18 @@ async fn process_command(
                         .await
                         .unwrap();
 
-                    return State::Decoding(decoder, samples_count as usize);
+                    return State::Decoding(Box::new(decoder), samples_count as usize);
                 }
             }
 
             output.send(WaveformMessage::Clear).await.unwrap();
-            return State::Idle;
+            
+            State::Idle
         }
         WaveformCommand::StopLoading => {
             output.send(WaveformMessage::Clear).await.unwrap();
 
-            return State::Idle;
+            State::Idle
         }
     }
 }
@@ -216,11 +216,11 @@ impl canvas::Program<Message> for Waveform {
 
     fn draw(
         &self,
-        state: &Self::State,
+        _state: &Self::State,
         renderer: &Renderer,
         theme: &Theme,
         bounds: Rectangle,
-        cursor: mouse::Cursor,
+        _cursor: mouse::Cursor,
     ) -> Vec<canvas::Geometry<Renderer>> {
         let geometry = self.cache.draw(renderer, bounds.size(), |frame| {
             let block_size = self.total_samples / frame.width() as usize;

@@ -211,19 +211,17 @@ fn search_new() -> impl Stream<Item = SearchMessage> {
                                 println!("Search cleared");
                             }
                         }
+                    } else if directories_to_visit.is_empty() {
+                        output.send(SearchMessage::SearchFinished).await.unwrap();
+                        state = SearchState::Idle;
                     } else {
-                        if directories_to_visit.is_empty() {
-                            output.send(SearchMessage::SearchFinished).await.unwrap();
-                            state = SearchState::Idle;
-                        } else {
-                            let results =
-                                search_filesystem(directories_to_visit, searched, options).await;
+                        let results =
+                            search_filesystem(directories_to_visit, searched, options).await;
 
-                            output
-                                .send(SearchMessage::FoundResults(results))
-                                .await
-                                .unwrap();
-                        }
+                        output
+                            .send(SearchMessage::FoundResults(results))
+                            .await
+                            .unwrap();
                     }
                 }
             }
