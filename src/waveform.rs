@@ -1,7 +1,7 @@
 use std::{
     fs::File,
     io::BufReader,
-    path::{Path, PathBuf},
+    path::{Path, PathBuf}, time::Instant,
 };
 
 use iced::{
@@ -74,6 +74,7 @@ impl Waveform {
                 self.samples.clear();
                 self.samples.reserve(samples_count);
                 self.total_samples = samples_count;
+
                 println!("Loading started: {samples_count}");
             }
             WaveformMessage::LoadingFinished => {
@@ -122,7 +123,7 @@ fn waveform_loading() -> impl Stream<Item = WaveformMessage> {
                     }
                 }
                 State::Decoding(mut decoder, total_samples_count) => {
-                    println!("Decoding");
+                    let loading_start_time = Instant::now();
                     const BUFFER_SIZE: usize = 44100;
                     // It's an option because I need to take the buffer when it is filled to avoid cloning it.
                     // It's safe to unwrap it because there always a buffer while decoding.
@@ -144,7 +145,6 @@ fn waveform_loading() -> impl Stream<Item = WaveformMessage> {
                                 }
                             };
                         }
-
                         
                         buffer
                             .as_mut()
@@ -168,6 +168,8 @@ fn waveform_loading() -> impl Stream<Item = WaveformMessage> {
                             .unwrap();
                     }
 
+                    let duration = Instant::now() - loading_start_time;
+                    println!("Loading time: {} ms {} samples / ms", duration.as_millis(), total_samples_count as u128 / duration.as_millis());
                     output.send(WaveformMessage::LoadingFinished).await.unwrap();
 
                     state = State::Idle;
