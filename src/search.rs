@@ -5,12 +5,12 @@ use iced::{
         stream::Stream,
         FutureExt, SinkExt, StreamExt,
     },
-    widget::{scrollable, text, text_input, Column},
+    widget::{image, scrollable, text, text_input, Column},
     Element, Length, Subscription, Task,
 };
 use std::path::PathBuf;
 
-use crate::{Message, View};
+use crate::{audio::Audio, ui, Message, View};
 
 #[derive(Debug, Clone)]
 pub enum SearchMessage {
@@ -20,6 +20,7 @@ pub enum SearchMessage {
     SearchFinished,
     FoundResults(Vec<PathBuf>),
     ClearResults,
+    Selected(Option<usize>),
 }
 
 pub struct Search {
@@ -28,6 +29,7 @@ pub struct Search {
     root_path: PathBuf,
     results: Vec<PathBuf>,
     search_options: SearchOptions,
+    selected: Option<usize>,
 }
 
 impl Search {
@@ -38,6 +40,7 @@ impl Search {
             root_path: PathBuf::new(),
             results: Vec::new(),
             search_options: SearchOptions::default(),
+            selected: None,
         }
     }
 
@@ -55,8 +58,12 @@ impl Search {
     pub fn view_results(&self) -> Element<Message> {
         let mut main_column = Column::new();
 
-        for path in &self.results {
-            main_column = main_column.push(text(path.display().to_string()));
+        for (index, path) in self.results.iter().enumerate() {
+            let icon = file_icon_provider::get_file_icon(path, 64).ok().map(|icon|image::Handle::from_rgba(icon.width, icon.height, icon.pixels));
+            let selected = self.selected.is_some_and(|selected_index|selected_index == index);
+            let entry = ui::file_entry(&path.display().to_string(), Message::Search(SearchMessage::Selected(Some(index))), icon, selected);
+
+            main_column = main_column.push(entry);
         }
 
         scrollable(main_column.width(Length::Fill)).into()
@@ -103,6 +110,17 @@ impl Search {
             }
             SearchMessage::ClearResults => {
                 self.results.clear();
+            }
+            SearchMessage::Selected(selected) => {
+                self.selected = selected;
+
+                if let Some(selected) = self.selected {
+                    let path = self.results[selected].clone();
+
+                    return Task::done(Message::SelectFile(Some(path)))
+                } else {
+                    return Task::done(Message::SelectFile(None))
+                }
             }
         }
 

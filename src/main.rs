@@ -33,6 +33,9 @@ enum Message {
     Search(SearchMessage),
     Waveform(WaveformMessage),
     PaneResized(pane_grid::ResizeEvent),
+    /// Send this message to show the waveform of a file and play it using Task::done.
+    /// Send SelectFile(None) to clear the waveform and stop playing audio.
+    SelectFile(Option<PathBuf>),
 }
 
 enum View {
@@ -120,13 +123,13 @@ impl SEx {
                 }
             }
             Message::FileExplorer(FileExplorerMessage::Select(id)) => {
-                self.set_selection(id);
+                return self.set_selection(id);
             }
             Message::FileExplorer(FileExplorerMessage::SelectNext) => {
                 if let Some(model) = self.model.as_mut() {
                     if let Some(current_id) = model.selection() {
                         if let Some(id) = model.next(current_id) {
-                            self.set_selection(Some(id));
+                            return self.set_selection(Some(id));
                         }
                     }
                 }
@@ -135,7 +138,7 @@ impl SEx {
                 if let Some(model) = self.model.as_mut() {
                     if let Some(current_id) = model.selection() {
                         if let Some(id) = model.previous(current_id) {
-                            self.set_selection(Some(id));
+                            return self.set_selection(Some(id));
                         }
                     }
                 }
@@ -162,30 +165,37 @@ impl SEx {
             Message::Waveform(message) => {
                 self.waveform.update(message);
             }
+            Message::SelectFile(Some(path)) => {
+                if path.is_file() && is_file_contains_audio(&path) {
+                    self.audio.play(&path);
+                    self.waveform.show(&path);
+                } else {
+                    return Task::done(Message::SelectFile(None))
+                }
+            },
+            Message::SelectFile(None) => {
+                self.audio.stop();
+                self.waveform.clear();
+            },
         }
 
         Task::none()
     }
 
-    fn set_selection(&mut self, id: Option<NodeId>) {
+    fn set_selection(&mut self, id: Option<NodeId>) -> Task<Message> {
         if let Some(model) = self.model.as_mut() {
             model.set_selection(id);
 
             if let Some(id) = id {
                 let path = model.path(id);
 
-                if path.is_file() && is_file_contains_audio(&path) {
-                    self.audio.play(&path);
-                    self.waveform.show(&path);
-                } else {
-                    self.audio.stop();
-                    self.waveform.clear();
-                }
+                return Task::done(Message::SelectFile(Some(path)))
             } else {
-                self.audio.stop();
-                self.waveform.clear();
+                return Task::done(Message::SelectFile(None))
             }
         }
+
+        Task::none()
     }
 
     fn view(&self) -> Element<Message> {
