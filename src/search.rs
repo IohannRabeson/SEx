@@ -5,12 +5,12 @@ use iced::{
         stream::Stream,
         FutureExt, SinkExt, StreamExt,
     },
-    widget::{image, scrollable, text, text_input, Column},
+    widget::{image, scrollable, text_input, Column},
     Element, Length, Subscription, Task,
 };
 use std::path::PathBuf;
 
-use crate::{audio::Audio, ui, Message, View};
+use crate::{ui, Message, View};
 
 #[derive(Debug, Clone)]
 pub enum SearchMessage {
@@ -61,7 +61,7 @@ impl Search {
         for (index, path) in self.results.iter().enumerate() {
             let icon = file_icon_provider::get_file_icon(path, 64).ok().map(|icon|image::Handle::from_rgba(icon.width, icon.height, icon.pixels));
             let selected = self.selected.is_some_and(|selected_index|selected_index == index);
-            let entry = ui::file_entry(&path.display().to_string(), Message::Search(SearchMessage::Selected(Some(index))), icon, selected);
+            let entry = ui::file_entry(path.display(), Message::Search(SearchMessage::Selected(Some(index))), icon, selected);
 
             main_column = main_column.push(entry);
         }
