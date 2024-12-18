@@ -1,6 +1,6 @@
 use iced::{
     alignment::Vertical,
-    widget::{container, image, svg, MouseArea, Row},
+    widget::{container, image, MouseArea, Row},
     Element, Padding, Theme,
 };
 

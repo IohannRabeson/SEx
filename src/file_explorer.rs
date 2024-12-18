@@ -7,8 +7,8 @@ use std::{
 };
 
 use iced::{
-    widget::{container, image, row, scrollable, text, Column, MouseArea, Space},
-    Element, Length, Task, Theme,
+    widget::{image, row, scrollable, text, Column, MouseArea, Space},
+    Element, Length, Task,
 };
 
 use crate::{load_directory_entries, ui, Message};
@@ -41,13 +41,6 @@ pub enum ContainerStatus {
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct NodeId(usize);
-
-fn selected_style(theme: &Theme) -> container::Style {
-    container::Style {
-        background: Some(iced::Background::Color(theme.palette().primary)),
-        ..Default::default()
-    }
-}
 
 pub fn view(tree: Option<&FileExplorerModel>) -> Element<Message> {
     const DEPTH_OFFSET: f32 = 16f32;
