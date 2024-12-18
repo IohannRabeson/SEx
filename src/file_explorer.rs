@@ -7,12 +7,11 @@ use std::{
 };
 
 use iced::{
-    alignment::Vertical,
-    widget::{container, row, scrollable, svg, text, Column, MouseArea, Space},
-    Element, Length, Padding, Task, Theme,
+    widget::{container, image, row, scrollable, text, Column, MouseArea, Space},
+    Element, Length, Task, Theme,
 };
 
-use crate::{load_directory_entries, Message};
+use crate::{load_directory_entries, ui, Message};
 
 #[derive(Debug, Clone)]
 pub enum FileExplorerMessage {
@@ -64,8 +63,6 @@ pub fn view(tree: Option<&FileExplorerModel>) -> Element<Message> {
             let selectable_part = make_selectable_part(
                 tree,
                 *id,
-                tree.folder_closed_icon.clone(),
-                tree.folder_open_icon.clone(),
             );
 
             let row = row![
@@ -90,53 +87,20 @@ pub fn view(tree: Option<&FileExplorerModel>) -> Element<Message> {
 fn make_selectable_part(
     model: &FileExplorerModel,
     id: NodeId,
-    folder: svg::Handle,
-    folder_open: svg::Handle,
 ) -> Element<Message> {
-    const FONT_SIZE: u16 = 14;
+    let path_component = model.path_component(id).unwrap();
+    let is_selected = model.selection.is_some_and(|selection| selection == id);
+    let select_message = Message::FileExplorer(FileExplorerMessage::Select(Some(id)));
+    let path = model.path(id);
+    let icon = file_icon_provider::get_file_icon(path, 64).ok().map(|icon|{
+        image::Handle::from_rgba(
+            icon.width,
+            icon.height,
+            icon.pixels,
+        )
+    });
 
-    let text = |path_component| text(path_component).size(FONT_SIZE);
-
-    let node = &*model.index.get(&id).unwrap().borrow();
-    let selectable_part: Element<Message> = match node {
-        Node::Root { path_component, .. } => text(path_component.clone()).into(),
-        Node::Directory {
-            path_component,
-            status,
-            ..
-        } => {
-            const SVG_ICON_SIZE: f32 = 20f32;
-
-            let svg = svg(match status {
-                ContainerStatus::NotLoaded
-                | ContainerStatus::Collapsed
-                | ContainerStatus::Empty => folder,
-                ContainerStatus::Expanded => folder_open,
-            })
-            .width(Length::Fixed(SVG_ICON_SIZE))
-            .height(Length::Fixed(SVG_ICON_SIZE))
-            .style(|theme: &Theme, _status| svg::Style {
-                color: Some(theme.palette().text),
-            });
-
-            let svg = container(svg).padding(Padding::from([0, 4]));
-
-            row![svg, text(path_component.clone())]
-                .align_y(Vertical::Center)
-                .into()
-        }
-        Node::File { path_component, .. } => text(path_component.clone()).into(),
-    };
-
-    let mut selectable_part = container(selectable_part);
-
-    if model.selection.is_some_and(|selection| selection == id) {
-        selectable_part = selectable_part.style(selected_style);
-    }
-
-    MouseArea::new(selectable_part)
-        .on_press(Message::FileExplorer(FileExplorerMessage::Select(Some(id))))
-        .into()
+    ui::file_entry(path_component, select_message, icon, is_selected)
 }
 
 fn show_children_control(
@@ -271,8 +235,6 @@ pub struct FileExplorerModel {
     linear_index: Vec<(NodeId, usize)>,
     next_node_id: usize,
     selection: Option<NodeId>,
-    folder_open_icon: svg::Handle,
-    folder_closed_icon: svg::Handle,
 }
 
 impl FileExplorerModel {
@@ -293,12 +255,6 @@ impl FileExplorerModel {
             root,
             next_node_id,
             selection: None,
-            folder_closed_icon: svg::Handle::from_memory(include_bytes!(
-                "../icons/folder-svgrepo-com.svg"
-            )),
-            folder_open_icon: svg::Handle::from_memory(include_bytes!(
-                "../icons/folder-open-side-svgrepo-com.svg"
-            )),
             linear_index: Vec::new(),
         }
     }

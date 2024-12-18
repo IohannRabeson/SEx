@@ -16,6 +16,7 @@ mod audio;
 mod file_explorer;
 mod search;
 mod waveform;
+mod ui;
 
 fn main() -> iced::Result {
     iced::application("SEx Sample Explorer", SEx::update, SEx::view)
