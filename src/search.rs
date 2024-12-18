@@ -177,7 +177,7 @@ enum SearchState {
 }
 fn search_new() -> impl Stream<Item = SearchMessage> {
     iced::stream::channel(20, |mut output| async move {
-        let (command_sender, mut command_receiver) = mpsc::channel::<SearchCommand>(1000);
+        let (command_sender, mut command_receiver) = mpsc::channel::<SearchCommand>(16);
         let mut state = SearchState::Idle;
 
         output
@@ -211,19 +211,17 @@ fn search_new() -> impl Stream<Item = SearchMessage> {
                                 println!("Search cleared");
                             }
                         }
+                    } else if directories_to_visit.is_empty() {
+                        output.send(SearchMessage::SearchFinished).await.unwrap();
+                        state = SearchState::Idle;
                     } else {
-                        if directories_to_visit.is_empty() {
-                            output.send(SearchMessage::SearchFinished).await.unwrap();
-                            state = SearchState::Idle;
-                        } else {
-                            let results =
-                                search_filesystem(directories_to_visit, searched, options).await;
+                        let results =
+                            search_filesystem(directories_to_visit, searched, options).await;
 
-                            output
-                                .send(SearchMessage::FoundResults(results))
-                                .await
-                                .unwrap();
-                        }
+                        output
+                            .send(SearchMessage::FoundResults(results))
+                            .await
+                            .unwrap();
                     }
                 }
             }

@@ -4,7 +4,6 @@ use std::{
     ops::Deref,
     path::PathBuf,
     rc::{Rc, Weak},
-    usize,
 };
 
 use iced::{
@@ -63,7 +62,7 @@ pub fn view(tree: Option<&FileExplorerModel>) -> Element<Message> {
             }
             let status = tree.status(*id).unwrap();
             let selectable_part = make_selectable_part(
-                &tree,
+                tree,
                 *id,
                 tree.folder_closed_icon.clone(),
                 tree.folder_open_icon.clone(),
@@ -71,7 +70,7 @@ pub fn view(tree: Option<&FileExplorerModel>) -> Element<Message> {
 
             let row = row![
                 Space::new(Length::Fixed(*depth as f32 * DEPTH_OFFSET), Length::Shrink),
-                show_children_control(&tree, *id, status),
+                show_children_control(tree, *id, status),
                 Space::new(Length::Fixed(5f32), Length::Shrink),
                 selectable_part,
             ];
@@ -88,12 +87,12 @@ pub fn view(tree: Option<&FileExplorerModel>) -> Element<Message> {
     .into()
 }
 
-fn make_selectable_part<'a>(
-    model: &'a FileExplorerModel,
+fn make_selectable_part(
+    model: &FileExplorerModel,
     id: NodeId,
     folder: svg::Handle,
     folder_open: svg::Handle,
-) -> Element<'a, Message> {
+) -> Element<Message> {
     const FONT_SIZE: u16 = 14;
 
     let text = |path_component| text(path_component).size(FONT_SIZE);
@@ -308,7 +307,7 @@ impl FileExplorerModel {
         let root = self.root.borrow();
 
         if let Node::Root { id, .. } = &*root {
-            return *id;
+            *id
         } else {
             panic!("The root node is not a Root")
         }
