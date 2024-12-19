@@ -169,7 +169,10 @@ fn waveform_loading() -> impl Stream<Item = WaveformMessage> {
                     }
 
                     let duration = Instant::now() - loading_start_time;
-                    println!("Loading time: {} ms {} samples / ms", duration.as_millis(), total_samples_count as u128 / duration.as_millis());
+                    let duration = duration.as_millis();
+
+                    println!("Loading time: {} ms {} samples / ms", duration, if duration == 0 { 0 } else { total_samples_count as u128 / duration });
+                    
                     output.send(WaveformMessage::LoadingFinished).await.unwrap();
 
                     state = State::Idle;
