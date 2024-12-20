@@ -1,7 +1,8 @@
 use std::{
     fs::File,
     io::BufReader,
-    path::{Path, PathBuf}, time::Instant,
+    path::{Path, PathBuf},
+    time::Instant,
 };
 
 use iced::{
@@ -47,9 +48,7 @@ enum State {
 impl Waveform {
     pub fn show(&mut self, path: impl AsRef<Path>) {
         if let Some(sender) = self.command_sender.as_mut() {
-            sender
-                .try_send(WaveformCommand::StopLoading)
-                .unwrap();
+            sender.try_send(WaveformCommand::StopLoading).unwrap();
 
             sender
                 .try_send(WaveformCommand::LoadFile(path.as_ref().to_path_buf()))
@@ -133,19 +132,24 @@ fn waveform_loading() -> impl Stream<Item = WaveformMessage> {
                         let mut accumulator = 0i32;
 
                         for c in 0..decoder.channels() {
-                            if let Some(WaveformCommand::StopLoading) = command_receiver.next().now_or_never().flatten() {
-                                break 'outer
+                            if let Some(WaveformCommand::StopLoading) =
+                                command_receiver.next().now_or_never().flatten()
+                            {
+                                break 'outer;
                             }
-                            
+
                             accumulator += match decoder.next() {
                                 Some(sample) => sample as i32,
                                 None => {
-                                    println!("No available samples to decode {} - channel {} - {}", i, c, total_samples_count);
+                                    println!(
+                                        "No available samples to decode {} - channel {} - {}",
+                                        i, c, total_samples_count
+                                    );
                                     0i32
                                 }
                             };
                         }
-                        
+
                         buffer
                             .as_mut()
                             .unwrap()
@@ -171,8 +175,16 @@ fn waveform_loading() -> impl Stream<Item = WaveformMessage> {
                     let duration = Instant::now() - loading_start_time;
                     let duration = duration.as_millis();
 
-                    println!("Loading time: {} ms {} samples / ms", duration, if duration == 0 { 0 } else { total_samples_count as u128 / duration });
-                    
+                    println!(
+                        "Loading time: {} ms {} samples / ms",
+                        duration,
+                        if duration == 0 {
+                            0
+                        } else {
+                            total_samples_count as u128 / duration
+                        }
+                    );
+
                     output.send(WaveformMessage::LoadingFinished).await.unwrap();
 
                     state = State::Idle;
@@ -206,7 +218,7 @@ async fn process_command(
             }
 
             output.send(WaveformMessage::Clear).await.unwrap();
-            
+
             State::Idle
         }
         WaveformCommand::StopLoading => {
