@@ -10,7 +10,7 @@ use iced::{
 };
 use std::path::PathBuf;
 
-use crate::{ui, Message, View};
+use crate::{icon_provider::IconProvider, ui, Message, View};
 
 #[derive(Debug, Clone)]
 pub enum SearchMessage {
@@ -27,7 +27,7 @@ pub struct Search {
     input: String,
     command_sender: Option<Sender<SearchCommand>>,
     root_path: PathBuf,
-    results: Vec<PathBuf>,
+    results: Vec<(PathBuf, Option<image::Handle>)>,
     search_options: SearchOptions,
     selected: Option<usize>,
 }
@@ -58,10 +58,16 @@ impl Search {
     pub fn view_results(&self) -> Element<Message> {
         let mut main_column = Column::new();
 
-        for (index, path) in self.results.iter().enumerate() {
-            let icon = file_icon_provider::get_file_icon(path, 64).ok().map(|icon|image::Handle::from_rgba(icon.width, icon.height, icon.pixels));
-            let selected = self.selected.is_some_and(|selected_index|selected_index == index);
-            let entry = ui::file_entry(path.display(), Message::Search(SearchMessage::Selected(Some(index))), icon, selected);
+        for (index, (path, icon)) in self.results.iter().enumerate() {
+            let selected = self
+                .selected
+                .is_some_and(|selected_index| selected_index == index);
+            let entry = ui::file_entry(
+                path.display(),
+                Message::Search(SearchMessage::Selected(Some(index))),
+                icon.clone(),
+                selected,
+            );
 
             main_column = main_column.push(entry);
         }
@@ -69,7 +75,12 @@ impl Search {
         scrollable(main_column.width(Length::Fill)).into()
     }
 
-    pub fn update(&mut self, message: SearchMessage, view: &mut View) -> Task<Message> {
+    pub fn update(
+        &mut self,
+        message: SearchMessage,
+        view: &mut View,
+        icon_provider: &IconProvider,
+    ) -> Task<Message> {
         match message {
             SearchMessage::Initialized(command_sender) => {
                 self.command_sender = Some(command_sender);
@@ -93,12 +104,12 @@ impl Search {
                     command_sender.try_send(command).unwrap()
                 };
             }
-            SearchMessage::FoundResults(mut results) => {
-                for path in &results {
-                    println!(" - {}", path.display());
-                }
+            SearchMessage::FoundResults(results) => {
+                self.results.extend(results.into_iter().map(|path| {
+                    let icon = icon_provider.icon(&path).ok();
 
-                self.results.append(&mut results);
+                    (path, icon)
+                }));
             }
             SearchMessage::SearchStarted => {
                 println!("Search started");
@@ -115,11 +126,11 @@ impl Search {
                 self.selected = selected;
 
                 if let Some(selected) = self.selected {
-                    let path = self.results[selected].clone();
+                    let (path, _) = &self.results[selected];
 
-                    return Task::done(Message::SelectFile(Some(path)))
+                    return Task::done(Message::SelectFile(Some(path.clone())));
                 } else {
-                    return Task::done(Message::SelectFile(None))
+                    return Task::done(Message::SelectFile(None));
                 }
             }
         }

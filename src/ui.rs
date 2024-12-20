@@ -6,16 +6,17 @@ use iced::{
 
 use crate::Message;
 
+pub(crate) const ICON_SIZE: u16 = 20;
+
 pub fn file_entry<'a>(
     text: impl ToString,
     select_message: Message,
     icon: Option<image::Handle>,
     selected: bool,
 ) -> Element<'a, Message> {
-    let mut row = Row::new();
-
     const FONT_SIZE: u16 = 14;
-    const ICON_SIZE: u16 = 16;
+
+    let mut row = Row::new();
 
     row = row.push_maybe(icon.map(|handle| {
         container(

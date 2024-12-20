@@ -11,7 +11,7 @@ use iced::{
     Element, Length, Task,
 };
 
-use crate::{load_directory_entries, ui, Message};
+use crate::{icon_provider::IconProvider, load_directory_entries, ui, Message};
 
 #[derive(Debug, Clone)]
 pub enum FileExplorerMessage {
@@ -27,8 +27,14 @@ pub enum FileExplorerMessage {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NewEntry {
-    Directory { path_component: String },
-    File { path_component: String },
+    Directory {
+        path: PathBuf,
+        path_component: String,
+    },
+    File {
+        path: PathBuf,
+        path_component: String,
+    },
 }
 
 #[derive(Clone, Copy)]
@@ -53,10 +59,7 @@ pub fn view(tree: Option<&FileExplorerModel>) -> Element<Message> {
                 continue;
             }
             let status = tree.status(*id).unwrap();
-            let selectable_part = make_selectable_part(
-                tree,
-                *id,
-            );
+            let selectable_part = make_selectable_part(tree, *id);
 
             let row = row![
                 Space::new(Length::Fixed(*depth as f32 * DEPTH_OFFSET), Length::Shrink),
@@ -77,21 +80,11 @@ pub fn view(tree: Option<&FileExplorerModel>) -> Element<Message> {
     .into()
 }
 
-fn make_selectable_part(
-    model: &FileExplorerModel,
-    id: NodeId,
-) -> Element<Message> {
+fn make_selectable_part(model: &FileExplorerModel, id: NodeId) -> Element<Message> {
     let path_component = model.path_component(id).unwrap();
     let is_selected = model.selection.is_some_and(|selection| selection == id);
     let select_message = Message::FileExplorer(FileExplorerMessage::Select(Some(id)));
-    let path = model.path(id);
-    let icon = file_icon_provider::get_file_icon(path, 64).ok().map(|icon|{
-        image::Handle::from_rgba(
-            icon.width,
-            icon.height,
-            icon.pixels,
-        )
-    });
+    let icon = model.icon(id);
 
     ui::file_entry(path_component, select_message, icon, is_selected)
 }
@@ -136,11 +129,13 @@ enum Node {
         children: Vec<Rc<RefCell<Node>>>,
         path_component: String,
         status: ContainerStatus,
+        icon: Option<image::Handle>,
     },
     File {
         id: NodeId,
         parent: Weak<RefCell<Node>>,
         path_component: String,
+        icon: Option<image::Handle>,
     },
 }
 
@@ -207,6 +202,14 @@ impl Node {
         }
     }
 
+    fn icon(&self) -> Option<image::Handle> {
+        match self {
+            Node::Root { .. } => None,
+            Node::Directory { icon, .. } => icon.clone(),
+            Node::File { icon, .. } => icon.clone(),
+        }
+    }
+
     fn status(&self) -> ContainerStatus {
         match self {
             Node::Root { .. } => ContainerStatus::Expanded,
@@ -262,14 +265,24 @@ impl FileExplorerModel {
         }
     }
 
-    pub fn add(&mut self, parent_id: NodeId, entries: Vec<NewEntry>) {
+    pub fn add(&mut self, parent_id: NodeId, entries: Vec<NewEntry>, icon_provider: &IconProvider) {
         for new_entry in entries {
             match new_entry {
-                NewEntry::File { path_component } => {
-                    self.add_leaf(parent_id, path_component);
+                NewEntry::File {
+                    path,
+                    path_component,
+                } => {
+                    let icon = icon_provider.icon(&path).ok();
+
+                    self.add_leaf(parent_id, path_component, icon);
                 }
-                NewEntry::Directory { path_component } => {
-                    self.add_container(parent_id, path_component);
+                NewEntry::Directory {
+                    path,
+                    path_component,
+                } => {
+                    let icon = icon_provider.icon(&path).ok();
+
+                    self.add_container(parent_id, path_component, icon);
                 }
             }
         }
@@ -279,7 +292,12 @@ impl FileExplorerModel {
 
     /// Adding a node changes the tree structure so
     /// linear index must be updated using update_linear_index().
-    fn add_container(&mut self, parent: NodeId, path_component: String) -> NodeId {
+    fn add_container(
+        &mut self,
+        parent: NodeId,
+        path_component: String,
+        icon: Option<image::Handle>,
+    ) -> NodeId {
         let new_node_id = NodeId(self.next_node_id);
         self.next_node_id += 1;
         let parent_node = self.index.get(&parent).unwrap();
@@ -289,6 +307,7 @@ impl FileExplorerModel {
             children: Vec::new(),
             path_component,
             status: ContainerStatus::NotLoaded,
+            icon,
         };
 
         new_node.set_parent(Rc::downgrade(parent_node));
@@ -303,7 +322,12 @@ impl FileExplorerModel {
 
     /// Adding a node changes the tree structure so
     /// linear index must be updated using update_linear_index().
-    fn add_leaf(&mut self, parent: NodeId, path_component: String) -> NodeId {
+    fn add_leaf(
+        &mut self,
+        parent: NodeId,
+        path_component: String,
+        icon: Option<image::Handle>,
+    ) -> NodeId {
         let new_node_id = NodeId(self.next_node_id);
         self.next_node_id += 1;
         let parent_node = self.index.get(&parent).unwrap();
@@ -311,6 +335,7 @@ impl FileExplorerModel {
             id: new_node_id,
             parent: Rc::downgrade(parent_node),
             path_component,
+            icon,
         };
 
         new_node.set_parent(Rc::downgrade(parent_node));
@@ -380,6 +405,12 @@ impl FileExplorerModel {
         let node = self.index.get(&id)?;
 
         Some(node.borrow().path_component())
+    }
+
+    fn icon(&self, id: NodeId) -> Option<image::Handle> {
+        let node = self.index.get(&id)?;
+
+        node.borrow().icon()
     }
 
     /// Changing the status changes the structure of the tree so
