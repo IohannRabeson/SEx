@@ -5,18 +5,20 @@ use file_explorer::{ContainerStatus, FileExplorerMessage, FileExplorerModel, New
 use iced::{
     futures::StreamExt,
     keyboard,
-    widget::{column, pane_grid, PaneGrid},
+    widget::{column, image, pane_grid, PaneGrid},
     Element, Font, Length, Subscription, Task,
 };
+use icon_provider::IconProvider;
 use rfd::AsyncFileDialog;
 use search::{Search, SearchMessage};
 use waveform::{Waveform, WaveformMessage};
 
 mod audio;
 mod file_explorer;
+mod icon_provider;
 mod search;
-mod waveform;
 mod ui;
+mod waveform;
 
 fn main() -> iced::Result {
     iced::application("SEx Sample Explorer", SEx::update, SEx::view)
@@ -55,6 +57,7 @@ struct SEx {
     view: View,
     panes: pane_grid::State<PaneState>,
     waveform: Waveform,
+    icon_provider: IconProvider,
 }
 
 impl SEx {
@@ -77,6 +80,7 @@ impl SEx {
                 view: View::Explorer,
                 panes,
                 waveform: Waveform::default(),
+                icon_provider: IconProvider::default(),
             },
             Task::perform(select_existing_directory(), Message::OpenDirectory),
         )
@@ -106,7 +110,7 @@ impl SEx {
             }
             Message::FileExplorer(FileExplorerMessage::ChildrenLoaded(parent_id, new_entries)) => {
                 if let Some(model) = self.model.as_mut() {
-                    model.add(parent_id, new_entries);
+                    model.add(parent_id, new_entries, &self.icon_provider);
                     model.update_linear_index();
                 }
             }
@@ -157,7 +161,9 @@ impl SEx {
                 }
             }
             Message::Search(message) => {
-                return self.search.update(message, &mut self.view);
+                return self
+                    .search
+                    .update(message, &mut self.view, &self.icon_provider);
             }
             Message::PaneResized(pane_grid::ResizeEvent { split, ratio }) => {
                 self.panes.resize(split, ratio);
@@ -170,13 +176,13 @@ impl SEx {
                     self.audio.play(&path);
                     self.waveform.show(&path);
                 } else {
-                    return Task::done(Message::SelectFile(None))
+                    return Task::done(Message::SelectFile(None));
                 }
-            },
+            }
             Message::SelectFile(None) => {
                 self.audio.stop();
                 self.waveform.clear();
-            },
+            }
         }
 
         Task::none()
@@ -189,9 +195,9 @@ impl SEx {
             if let Some(id) = id {
                 let path = model.path(id);
 
-                return Task::done(Message::SelectFile(Some(path)))
+                return Task::done(Message::SelectFile(Some(path)));
             } else {
-                return Task::done(Message::SelectFile(None))
+                return Task::done(Message::SelectFile(None));
             }
         }
 
@@ -246,9 +252,7 @@ impl SEx {
 fn is_file_contains_audio(path: impl AsRef<Path>) -> bool {
     let mime_guess = mime_guess::from_path(path);
 
-    mime_guess
-        .iter()
-        .any(|mime| mime.type_() == mime::AUDIO)
+    mime_guess.iter().any(|mime| mime.type_() == mime::AUDIO)
 }
 
 async fn select_existing_directory() -> Option<PathBuf> {
@@ -267,11 +271,19 @@ async fn load_directory_entries(directory_path: PathBuf) -> Vec<NewEntry> {
                 if let Ok(metadata) = entry.metadata().await {
                     if metadata.is_dir() {
                         results.push(NewEntry::Directory {
-                            path_component: entry.file_name().into_string().unwrap(),
+                            path: entry.path().into(),
+                            path_component: entry
+                                .file_name()
+                                .into_string()
+                                .unwrap_or_else(|_| "<conversion error>".to_owned()),
                         });
                     } else if metadata.is_file() {
                         results.push(NewEntry::File {
-                            path_component: entry.file_name().into_string().unwrap(),
+                            path: entry.path().into(),
+                            path_component: entry
+                                .file_name()
+                                .into_string()
+                                .unwrap_or_else(|_| "<conversion error>".to_owned()),
                         });
                     }
                 }
