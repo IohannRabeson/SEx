@@ -26,9 +26,9 @@ impl FileExplorer {
 
         let root = self.model.as_ref().unwrap().root_id();
 
-        return Task::perform(load_directory_entries(path.as_ref().to_path_buf()), move |entries| {
+        Task::perform(load_directory_entries(path.as_ref().to_path_buf()), move |entries| {
             Message::FileExplorer(FileExplorerMessage::ChildrenLoaded(root, entries))
-        });
+        })
     }
 
     pub fn view(&self) -> Element<Message> {
