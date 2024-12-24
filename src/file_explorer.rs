@@ -26,16 +26,23 @@ impl FileExplorer {
 
         let root = self.model.as_ref().unwrap().root_id();
 
-        Task::perform(load_directory_entries(path.as_ref().to_path_buf()), move |entries| {
-            Message::FileExplorer(FileExplorerMessage::ChildrenLoaded(root, entries))
-        })
+        Task::perform(
+            load_directory_entries(path.as_ref().to_path_buf()),
+            move |entries| {
+                Message::FileExplorer(FileExplorerMessage::ChildrenLoaded(root, entries))
+            },
+        )
     }
 
     pub fn view(&self) -> Element<Message> {
         self::view(self.model.as_ref())
     }
 
-    pub fn update(&mut self, message: FileExplorerMessage, icon_provider: &IconProvider) -> Task<Message> {
+    pub fn update(
+        &mut self,
+        message: FileExplorerMessage,
+        icon_provider: &IconProvider,
+    ) -> Task<Message> {
         match message {
             FileExplorerMessage::RequestLoad(id, path) => {
                 return Task::perform(load_directory_entries(path), move |entries| {
@@ -163,7 +170,6 @@ fn view(tree: Option<&FileExplorerModel>) -> Element<Message> {
             }
             let status = tree.status(*id).unwrap();
             let selectable_part = make_selectable_part(tree, *id);
-
             let row = row![
                 Space::new(Length::Fixed(*depth as f32 * DEPTH_OFFSET), Length::Shrink),
                 show_children_control(tree, *id, status),

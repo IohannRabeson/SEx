@@ -1,11 +1,7 @@
-use std::{
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 use audio::Audio;
-use file_explorer::{
-    FileExplorer, FileExplorerMessage, NewEntry,
-};
+use file_explorer::{FileExplorer, FileExplorerMessage, NewEntry};
 use iced::{
     futures::StreamExt,
     keyboard,
