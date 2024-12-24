@@ -1,7 +1,11 @@
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+};
 
 use audio::Audio;
-use file_explorer::{ContainerStatus, FileExplorerMessage, FileExplorerModel, NewEntry, NodeId};
+use file_explorer::{
+    FileExplorer, FileExplorerMessage, NewEntry,
+};
 use iced::{
     futures::StreamExt,
     keyboard,
@@ -51,8 +55,8 @@ enum PaneState {
 }
 
 struct SEx {
-    model: Option<FileExplorerModel>,
     audio: Audio,
+    explorer: FileExplorer,
     search: Search,
     view: View,
     panes: pane_grid::State<PaneState>,
@@ -74,8 +78,8 @@ impl SEx {
 
         (
             Self {
-                model: None,
                 audio: Audio::new(),
+                explorer: FileExplorer::default(),
                 search: Search::new(),
                 view: View::Explorer,
                 panes,
@@ -92,73 +96,13 @@ impl SEx {
                 if let Some(path) = path {
                     assert!(path.is_dir());
 
-                    let model = FileExplorerModel::new(path.display().to_string());
-                    let root = model.root_id();
-
                     self.search.set_root_path(path.clone());
-                    self.model = Some(model);
 
-                    return Task::perform(load_directory_entries(path), move |entries| {
-                        Message::FileExplorer(FileExplorerMessage::ChildrenLoaded(root, entries))
-                    });
+                    return self.explorer.set_root_path(&path);
                 }
             }
-            Message::FileExplorer(FileExplorerMessage::RequestLoad(id, path)) => {
-                return Task::perform(load_directory_entries(path), move |entries| {
-                    Message::FileExplorer(FileExplorerMessage::ChildrenLoaded(id, entries))
-                });
-            }
-            Message::FileExplorer(FileExplorerMessage::ChildrenLoaded(parent_id, new_entries)) => {
-                if let Some(model) = self.model.as_mut() {
-                    model.add(parent_id, new_entries, &self.icon_provider);
-                    model.update_linear_index();
-                }
-            }
-            Message::FileExplorer(FileExplorerMessage::Collapse(id)) => {
-                if let Some(model) = self.model.as_mut() {
-                    model.set_status(id, ContainerStatus::Collapsed);
-                    model.update_linear_index();
-                }
-            }
-            Message::FileExplorer(FileExplorerMessage::Expand(id)) => {
-                if let Some(model) = self.model.as_mut() {
-                    model.set_status(id, ContainerStatus::Expanded);
-                    model.update_linear_index();
-                }
-            }
-            Message::FileExplorer(FileExplorerMessage::Select(id)) => {
-                return self.set_selection(id);
-            }
-            Message::FileExplorer(FileExplorerMessage::SelectNext) => {
-                if let Some(model) = self.model.as_mut() {
-                    if let Some(current_id) = model.selection() {
-                        if let Some(id) = model.next(current_id) {
-                            return self.set_selection(Some(id));
-                        }
-                    }
-                }
-            }
-            Message::FileExplorer(FileExplorerMessage::SelectPrevious) => {
-                if let Some(model) = self.model.as_mut() {
-                    if let Some(current_id) = model.selection() {
-                        if let Some(id) = model.previous(current_id) {
-                            return self.set_selection(Some(id));
-                        }
-                    }
-                }
-            }
-            Message::FileExplorer(FileExplorerMessage::ExpandCollapseCurrent) => {
-                if let Some(model) = self.model.as_mut() {
-                    if let Some(current_id) = model.selection() {
-                        let mut task = model.expand_collapse(current_id);
-
-                        model.update_linear_index();
-
-                        if task.is_some() {
-                            return task.take().unwrap();
-                        }
-                    }
-                }
+            Message::FileExplorer(message) => {
+                return self.explorer.update(message, &self.icon_provider);
             }
             Message::Search(message) => {
                 return self
@@ -188,32 +132,13 @@ impl SEx {
         Task::none()
     }
 
-    fn set_selection(&mut self, id: Option<NodeId>) -> Task<Message> {
-        if let Some(model) = self.model.as_mut() {
-            model.set_selection(id);
-
-            if let Some(id) = id {
-                let path = model.path(id);
-
-                return Task::done(Message::SelectFile(Some(path)));
-            } else {
-                return Task::done(Message::SelectFile(None));
-            }
-        }
-
-        Task::none()
-    }
-
     fn view(&self) -> Element<Message> {
         let pane_grid = PaneGrid::new(&self.panes, |_id, pane, _is_maximized| match pane {
             PaneState::Explorer => match self.view {
-                View::Explorer => column![
-                    self.search.view_input(),
-                    file_explorer::view(self.model.as_ref())
-                ]
-                .width(Length::Fill)
-                .height(Length::Fill)
-                .into(),
+                View::Explorer => column![self.search.view_input(), self.explorer.view(),]
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .into(),
                 View::Search => column![self.search.view_input(), self.search.view_results(),]
                     .width(Length::Fill)
                     .height(Length::Fill)

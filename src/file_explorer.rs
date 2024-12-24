@@ -2,7 +2,7 @@ use std::{
     cell::RefCell,
     collections::{BTreeMap, VecDeque},
     ops::Deref,
-    path::PathBuf,
+    path::{Path, PathBuf},
     rc::{Rc, Weak},
 };
 
@@ -12,6 +12,109 @@ use iced::{
 };
 
 use crate::{icon_provider::IconProvider, load_directory_entries, ui, Message};
+
+#[derive(Default)]
+pub struct FileExplorer {
+    model: Option<FileExplorerModel>,
+}
+
+impl FileExplorer {
+    pub fn set_root_path(&mut self, path: impl AsRef<Path>) -> Task<Message> {
+        self.model = Some(FileExplorerModel::new(
+            path.as_ref().to_string_lossy().to_string(),
+        ));
+
+        let root = self.model.as_ref().unwrap().root_id();
+
+        return Task::perform(load_directory_entries(path.as_ref().to_path_buf()), move |entries| {
+            Message::FileExplorer(FileExplorerMessage::ChildrenLoaded(root, entries))
+        });
+    }
+
+    pub fn view(&self) -> Element<Message> {
+        self::view(self.model.as_ref())
+    }
+
+    pub fn update(&mut self, message: FileExplorerMessage, icon_provider: &IconProvider) -> Task<Message> {
+        match message {
+            FileExplorerMessage::RequestLoad(id, path) => {
+                return Task::perform(load_directory_entries(path), move |entries| {
+                    Message::FileExplorer(FileExplorerMessage::ChildrenLoaded(id, entries))
+                });
+            }
+            FileExplorerMessage::ChildrenLoaded(parent_id, new_entries) => {
+                if let Some(model) = self.model.as_mut() {
+                    model.add(parent_id, new_entries, icon_provider);
+                    model.update_linear_index();
+                }
+            }
+            FileExplorerMessage::Collapse(id) => {
+                if let Some(model) = self.model.as_mut() {
+                    model.set_status(id, ContainerStatus::Collapsed);
+                    model.update_linear_index();
+                }
+            }
+            FileExplorerMessage::Expand(id) => {
+                if let Some(model) = self.model.as_mut() {
+                    model.set_status(id, ContainerStatus::Expanded);
+                    model.update_linear_index();
+                }
+            }
+            FileExplorerMessage::Select(id) => {
+                return self.set_selection(id);
+            }
+            FileExplorerMessage::SelectNext => {
+                if let Some(model) = self.model.as_mut() {
+                    if let Some(current_id) = model.selection() {
+                        if let Some(id) = model.next(current_id) {
+                            return self.set_selection(Some(id));
+                        }
+                    }
+                }
+            }
+            FileExplorerMessage::SelectPrevious => {
+                if let Some(model) = self.model.as_mut() {
+                    if let Some(current_id) = model.selection() {
+                        if let Some(id) = model.previous(current_id) {
+                            return self.set_selection(Some(id));
+                        }
+                    }
+                }
+            }
+            FileExplorerMessage::ExpandCollapseCurrent => {
+                if let Some(model) = self.model.as_mut() {
+                    if let Some(current_id) = model.selection() {
+                        let mut task = model.expand_collapse(current_id);
+
+                        model.update_linear_index();
+
+                        if task.is_some() {
+                            return task.take().unwrap();
+                        }
+                    }
+                }
+            }
+        }
+
+        Task::none()
+    }
+
+    fn set_selection(&mut self, id: Option<NodeId>) -> Task<Message> {
+        if let Some(model) = self.model.as_mut() {
+            model.set_selection(id);
+
+            if let Some(id) = id {
+                let path = model.path(id);
+
+                return Task::done(Message::SelectFile(Some(path)));
+            } else {
+                return Task::done(Message::SelectFile(None));
+            }
+        }
+
+        Task::none()
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum FileExplorerMessage {
@@ -48,7 +151,7 @@ pub enum ContainerStatus {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct NodeId(usize);
 
-pub fn view(tree: Option<&FileExplorerModel>) -> Element<Message> {
+fn view(tree: Option<&FileExplorerModel>) -> Element<Message> {
     const DEPTH_OFFSET: f32 = 16f32;
 
     let mut main_column = Column::new();
