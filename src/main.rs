@@ -9,7 +9,7 @@ use file_explorer::{
 use iced::{
     futures::StreamExt,
     keyboard,
-    widget::{column, image, pane_grid, PaneGrid},
+    widget::{column, pane_grid, PaneGrid},
     Element, Font, Length, Subscription, Task,
 };
 use icon_provider::IconProvider;
