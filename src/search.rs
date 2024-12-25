@@ -101,7 +101,9 @@ impl Search {
                         self.search_options.clone(),
                     );
 
-                    command_sender.try_send(command).unwrap()
+                    command_sender.try_send(command).unwrap();
+
+                    *view = View::Search;
                 };
             }
             SearchMessage::FoundResults(results) => {
