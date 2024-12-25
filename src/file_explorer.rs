@@ -159,7 +159,7 @@ pub enum ContainerStatus {
 pub struct NodeId(usize);
 
 fn view(tree: Option<&FileExplorerModel>) -> Element<Message> {
-    const DEPTH_OFFSET: f32 = 16f32;
+    const DEPTH_OFFSET: f32 = 20f32;
 
     let mut main_column = Column::new();
 
