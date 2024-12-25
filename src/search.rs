@@ -127,13 +127,7 @@ impl Search {
             SearchMessage::Selected(selected) => {
                 self.selected = selected;
 
-                if let Some(selected) = self.selected {
-                    let (path, _) = &self.results[selected];
-
-                    return Task::done(Message::SelectFile(Some(path.clone())));
-                } else {
-                    return Task::done(Message::SelectFile(None));
-                }
+                return Task::done(Message::SelectFile(self.selected.map(|selected|self.results[selected].0.clone())))
             }
         }
 
