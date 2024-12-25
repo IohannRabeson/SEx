@@ -171,9 +171,9 @@ impl SEx {
 }
 
 fn is_file_contains_audio(path: impl AsRef<Path>) -> bool {
-    let mime_guess = mime_guess::from_path(path);
-
-    mime_guess.iter().any(|mime| mime.type_() == mime::AUDIO)
+    mime_guess::from_path(path)
+        .iter()
+        .any(|mime| mime.type_() == mime::AUDIO && mime.subtype() != "midi")
 }
 
 async fn select_existing_directory() -> Option<PathBuf> {
@@ -199,13 +199,17 @@ async fn load_directory_entries(directory_path: PathBuf) -> Vec<NewEntry> {
                                 .unwrap_or_else(|_| "<conversion error>".to_owned()),
                         });
                     } else if metadata.is_file() {
-                        results.push(NewEntry::File {
-                            path: entry.path().into(),
-                            path_component: entry
-                                .file_name()
-                                .into_string()
-                                .unwrap_or_else(|_| "<conversion error>".to_owned()),
-                        });
+                        let path: PathBuf = entry.path().into();
+
+                        if is_file_contains_audio(&path) {
+                            results.push(NewEntry::File {
+                                path,
+                                path_component: entry
+                                    .file_name()
+                                    .into_string()
+                                    .unwrap_or_else(|_| "<conversion error>".to_owned()),
+                            });
+                        }
                     }
                 }
             }
