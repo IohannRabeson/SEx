@@ -127,7 +127,10 @@ impl Search {
             SearchMessage::Selected(selected) => {
                 self.selected = selected;
 
-                return Task::done(Message::SelectFile(self.selected.map(|selected|self.results[selected].0.clone())))
+                return Task::done(Message::SelectFile(
+                    self.selected
+                        .map(|selected| self.results[selected].0.clone()),
+                ));
             }
         }
 
