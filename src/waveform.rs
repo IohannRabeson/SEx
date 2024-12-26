@@ -42,7 +42,7 @@ pub struct Waveform {
 
 enum State {
     Idle,
-    Decoding(Box<Decoder<BufReader<File>>>, usize),
+    Decoding{ decoder: Box<Decoder<BufReader<File>>>, samples_count: usize, sample_rate: usize },
 }
 
 impl Waveform {
@@ -121,20 +121,22 @@ fn waveform_loading() -> impl Stream<Item = WaveformMessage> {
                         state = process_command(command, &mut output).await;
                     }
                 }
-                State::Decoding(mut decoder, total_samples_count) => {
+                State::Decoding{ mut decoder, samples_count, sample_rate} => {
                     let loading_start_time = Instant::now();
-                    const BUFFER_SIZE: usize = 44100;
+                    let buffer_size = sample_rate;
+                    println!("Decoding, buffer size: {}", buffer_size);
                     // It's an option because I need to take the buffer when it is filled to avoid cloning it.
                     // It's safe to unwrap it because there always a buffer while decoding.
-                    let mut buffer = Some(Vec::with_capacity(BUFFER_SIZE));
+                    let mut buffer = Some(Vec::with_capacity(buffer_size));
 
-                    'outer: for i in 0..total_samples_count {
+                    'outer: for i in 0..samples_count {
                         let mut accumulator = 0i32;
 
                         for c in 0..decoder.channels() {
                             if let Some(WaveformCommand::StopLoading) =
                                 command_receiver.next().now_or_never().flatten()
                             {
+                                buffer.as_mut().unwrap().clear();
                                 break 'outer;
                             }
 
@@ -143,7 +145,7 @@ fn waveform_loading() -> impl Stream<Item = WaveformMessage> {
                                 None => {
                                     println!(
                                         "No available samples to decode {} - channel {} - {}",
-                                        i, c, total_samples_count
+                                        i, c, samples_count
                                     );
                                     0i32
                                 }
@@ -155,13 +157,13 @@ fn waveform_loading() -> impl Stream<Item = WaveformMessage> {
                             .unwrap()
                             .push((accumulator / decoder.channels() as i32) as i16);
 
-                        if buffer.as_ref().unwrap().len() == BUFFER_SIZE {
+                        if buffer.as_ref().unwrap().len() == buffer_size {
                             output
                                 .send(WaveformMessage::SamplesReady(buffer.take().unwrap()))
                                 .await
                                 .unwrap();
 
-                            buffer = Some(Vec::with_capacity(BUFFER_SIZE));
+                            buffer = Some(Vec::with_capacity(buffer_size));
                         }
                     }
 
@@ -181,7 +183,7 @@ fn waveform_loading() -> impl Stream<Item = WaveformMessage> {
                         if duration == 0 {
                             0
                         } else {
-                            total_samples_count as u128 / duration
+                            samples_count as u128 / duration
                         }
                     );
 
@@ -213,7 +215,7 @@ async fn process_command(
                         .await
                         .unwrap();
 
-                    return State::Decoding(Box::new(decoder), samples_count as usize);
+                    return State::Decoding{ decoder: Box::new(decoder), samples_count: samples_count as usize, sample_rate: sample_rate as  usize };
                 }
             }
 
