@@ -246,6 +246,18 @@ async fn process_command(
         }
     }
 }
+
+fn line_color(palette: &Palette, has_samples: bool) -> Color {
+    let mut color = palette.text;
+    let factor = if has_samples { 0.8 } else { 0.45 };
+    
+    color.r *= factor;
+    color.g *= factor;
+    color.b *= factor;
+
+    color
+}
+
 impl canvas::Program<Message> for Waveform {
     type State = ();
 
@@ -260,6 +272,12 @@ impl canvas::Program<Message> for Waveform {
         let geometry = self.cache.draw(renderer, bounds.size(), |frame| {
             let block_size = self.total_samples / frame.width() as usize;
             let palette = theme.palette();
+
+            frame.fill_rectangle(
+                Point::new(0.0, frame.height() / 2.0),
+                Size::new(frame.width(), 1.0),
+                line_color(&palette, self.total_samples > 0),
+            );
 
             if block_size > 0 {
                 for (index, block) in self.samples.chunks(block_size).enumerate() {
