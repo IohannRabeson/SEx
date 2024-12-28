@@ -110,7 +110,7 @@ impl FileExplorer {
         if let Some(model) = self.model.as_mut() {
             model.set_selection(id);
 
-            return Task::done(Message::SelectFile(id.map(|id|model.path(id))))
+            return Task::done(Message::SelectFile(id.map(|id| model.path(id))));
         }
 
         Task::none()
