@@ -19,7 +19,15 @@ use rodio::{Decoder, Source};
 use crate::Message;
 
 pub enum WaveformCommand {
-    LoadFile(PathBuf),
+    LoadFile{ 
+        /// Path to the file to load
+        path: PathBuf, 
+        /// Generation number. When a `WaveformMessage::SamplesReady` with a matching generation number
+        /// samples data are added to the waveform. This is required to prevent a bug. When loading a long sample, if you 
+        /// stop the loading (by clicking on a folder), you will have some "delayed" data added to the waveform *after*
+        /// clearing it.
+        generation: usize 
+    },
     StopLoading,
 }
 
@@ -29,7 +37,7 @@ pub enum WaveformMessage {
     LoadingStarted(usize),
     LoadingFinished,
     Clear,
-    SamplesReady(Vec<i16>),
+    SamplesReady { path: Vec<i16>, generation: usize },
 }
 
 #[derive(Default)]
@@ -38,11 +46,12 @@ pub struct Waveform {
     samples: Vec<i16>,
     total_samples: usize,
     command_sender: Option<mpsc::Sender<WaveformCommand>>,
+    current_generation: usize,
 }
 
 enum State {
     Idle,
-    Decoding{ decoder: Box<Decoder<BufReader<File>>>, samples_count: usize, sample_rate: usize },
+    Decoding{ decoder: Box<Decoder<BufReader<File>>>, samples_count: usize, sample_rate: usize, generation: usize },
 }
 
 impl Waveform {
@@ -50,14 +59,19 @@ impl Waveform {
         if let Some(sender) = self.command_sender.as_mut() {
             sender.try_send(WaveformCommand::StopLoading).unwrap();
 
+            self.current_generation += 1;
+
             sender
-                .try_send(WaveformCommand::LoadFile(path.as_ref().to_path_buf()))
+                .try_send(WaveformCommand::LoadFile{ path: path.as_ref().to_path_buf(), generation: self.current_generation }) 
                 .unwrap();
         }
     }
 
     pub fn clear(&mut self) {
         if let Some(sender) = self.command_sender.as_mut() {
+            
+            self.current_generation += 1;
+
             sender.try_send(WaveformCommand::StopLoading).unwrap();
         }
         self.samples.clear();
@@ -79,8 +93,10 @@ impl Waveform {
             WaveformMessage::LoadingFinished => {
                 println!("Loading finished");
             }
-            WaveformMessage::SamplesReady(mut samples) => {
-                self.samples.append(&mut samples);
+            WaveformMessage::SamplesReady { path: mut samples, generation } => {
+                if self.current_generation == generation {
+                    self.samples.append(&mut samples);
+                }
             }
             WaveformMessage::Clear => {
                 self.samples.clear();
@@ -121,7 +137,7 @@ fn waveform_loading() -> impl Stream<Item = WaveformMessage> {
                         state = process_command(command, &mut output).await;
                     }
                 }
-                State::Decoding{ mut decoder, samples_count, sample_rate} => {
+                State::Decoding{ mut decoder, samples_count, sample_rate, generation} => {
                     let loading_start_time = Instant::now();
                     let buffer_size = sample_rate;
                     println!("Decoding, buffer size: {}", buffer_size);
@@ -159,7 +175,7 @@ fn waveform_loading() -> impl Stream<Item = WaveformMessage> {
 
                         if buffer.as_ref().unwrap().len() == buffer_size {
                             output
-                                .send(WaveformMessage::SamplesReady(buffer.take().unwrap()))
+                                .send(WaveformMessage::SamplesReady { path: buffer.take().unwrap(), generation })
                                 .await
                                 .unwrap();
 
@@ -169,7 +185,7 @@ fn waveform_loading() -> impl Stream<Item = WaveformMessage> {
 
                     if !buffer.as_ref().unwrap().is_empty() {
                         output
-                            .send(WaveformMessage::SamplesReady(buffer.take().unwrap()))
+                            .send(WaveformMessage::SamplesReady { path: buffer.take().unwrap(), generation })
                             .await
                             .unwrap();
                     }
@@ -201,7 +217,7 @@ async fn process_command(
     output: &mut mpsc::Sender<WaveformMessage>,
 ) -> State {
     match command {
-        WaveformCommand::LoadFile(path) => {
+        WaveformCommand::LoadFile{ path, generation} => {
             if let Ok(file) = File::open(path) {
                 if let Ok(decoder) = Decoder::new(BufReader::new(file)) {
                     let duration = decoder.total_duration().expect("get total duration");
@@ -215,7 +231,7 @@ async fn process_command(
                         .await
                         .unwrap();
 
-                    return State::Decoding{ decoder: Box::new(decoder), samples_count: samples_count as usize, sample_rate: sample_rate as  usize };
+                    return State::Decoding{ decoder: Box::new(decoder), samples_count: samples_count as usize, sample_rate: sample_rate as  usize, generation };
                 }
             }
 
