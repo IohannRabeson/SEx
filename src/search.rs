@@ -10,7 +10,7 @@ use iced::{
 };
 use std::path::PathBuf;
 
-use crate::{icon_provider::IconProvider, ui, Message, View};
+use crate::{icon_provider::IconProvider, is_file_contains_audio, ui, Message, View};
 
 #[derive(Debug, Clone)]
 pub enum SearchMessage {
@@ -163,7 +163,7 @@ fn accept_entry(entry: &DirEntry, searched: &str, options: &SearchOptions) -> bo
                     || filename.to_lowercase().contains(&searched.to_lowercase())
             };
 
-            return accept;
+            return accept && is_file_contains_audio(entry.path());
         }
     }
 
