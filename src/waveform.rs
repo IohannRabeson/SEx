@@ -277,7 +277,7 @@ async fn process_command(
 fn line_color(palette: &Palette, has_samples: bool) -> Color {
     let mut color = palette.text;
     let factor = if has_samples { 0.8 } else { 0.45 };
-    
+
     color.r *= factor;
     color.g *= factor;
     color.b *= factor;
