@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use audio::Audio;
+use audio::{Audio, AudioMessage};
 use file_explorer::{FileExplorer, FileExplorerMessage, NewEntry};
 use iced::{
     futures::StreamExt,
@@ -34,6 +34,7 @@ enum Message {
     FileExplorer(FileExplorerMessage),
     Search(SearchMessage),
     Waveform(WaveformMessage),
+    Audio(AudioMessage),
     PaneResized(pane_grid::ResizeEvent),
     /// Send this message to show the waveform of a file and play it using Task::done.
     /// Send SelectFile(None) to clear the waveform and stop playing audio.
@@ -111,6 +112,9 @@ impl SEx {
             Message::Waveform(message) => {
                 self.waveform.update(message);
             }
+            Message::Audio(message) => {
+                return self.audio.update(message);
+            }
             Message::SelectFile(Some(path)) => {
                 if path.is_file() && is_file_contains_audio(&path) {
                     self.audio.play(&path);
@@ -166,6 +170,7 @@ impl SEx {
             }),
             self.search.subscription(),
             self.waveform.subscription(),
+            self.audio.subscription(),
         ])
     }
 }
