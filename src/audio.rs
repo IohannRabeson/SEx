@@ -59,9 +59,11 @@ impl Audio {
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
+        const UI_FRAME_DURATION: Duration = Duration::from_millis(1000 / 60);
+        
         Subscription::batch([
             Subscription::run(run_audio_player),
-            iced::time::every(Duration::from_millis(50)).map(|_|Message::Audio(AudioMessage::QueryPosition)),
+            iced::time::every(UI_FRAME_DURATION).map(|_|Message::Audio(AudioMessage::QueryPosition)),
         ])
     }
 
