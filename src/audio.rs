@@ -1,29 +1,30 @@
 use std::{
     fs::File,
     io::BufReader,
-    path::{Path, PathBuf},
+    path::{Path, PathBuf}, time::Duration,
 };
 
 use iced::{
     futures::{
-        channel::mpsc::{self, Sender},
-        SinkExt, Stream, StreamExt,
+        channel::mpsc::{self, Sender}, SinkExt, Stream, StreamExt
     },
     Subscription, Task,
 };
-use rodio::{OutputStream, OutputStreamHandle};
+use rodio::{OutputStream, OutputStreamHandle, Source};
 
-use crate::Message;
+use crate::{waveform::WaveformMessage, Message};
 
 #[derive(Debug, Clone)]
 pub enum AudioMessage {
     Initialize(Sender<AudioCommand>),
+    QueryPosition,
 }
 
 pub enum AudioCommand {
     Initialize(OutputStreamHandle),
     Play(PathBuf),
     Stop,
+    QueryPosition,
 }
 
 pub struct Audio {
@@ -49,13 +50,19 @@ impl Audio {
                 self.command_sender = Some(command_sender);
                 self.send_command(AudioCommand::Initialize(self.output_stream_handle.clone()));
             }
+            AudioMessage::QueryPosition => {
+                self.send_command_if_possible(AudioCommand::QueryPosition);
+            }
         }
 
         Task::none()
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
-        Subscription::run(run_audio_player).map(Message::Audio)
+        Subscription::batch([
+            Subscription::run(run_audio_player),
+            iced::time::every(Duration::from_millis(50)).map(|_|Message::Audio(AudioMessage::QueryPosition)),
+        ])
     }
 
     pub fn play(&mut self, path: impl AsRef<Path>) {
@@ -73,18 +80,26 @@ impl Audio {
             .as_mut()
             .expect("command sender initialized")
             .try_send(command)
-            .expect("send message");
+            .expect("send command");
+    }
+
+    fn send_command_if_possible(&mut self, command: AudioCommand) {
+        if let Some(command_sender) = self.command_sender.as_mut() {
+            let _ = command_sender.try_send(command);
+        }
     }
 }
 
-fn run_audio_player() -> impl Stream<Item = AudioMessage> {
+fn run_audio_player() -> impl Stream<Item = Message> {
     iced::stream::channel(1, |mut output| async move {
         println!("Start audio subscription");
         let (command_sender, mut command_receiver) = mpsc::channel::<AudioCommand>(8);
 
         let mut sink = None;
 
-        output.send(AudioMessage::Initialize(command_sender)).await.unwrap();
+        output.send(Message::Audio(AudioMessage::Initialize(command_sender))).await.unwrap();
+
+        let mut duration = None;
 
         while let Some(command) = command_receiver.next().await {
             match command {
@@ -96,6 +111,7 @@ fn run_audio_player() -> impl Stream<Item = AudioMessage> {
                     if let Some(sink) = sink.as_mut() {
                         if let Ok(file) = File::open(path) {
                             if let Ok(source) = rodio::Decoder::new(BufReader::new(file)) {
+                                duration = source.total_duration();
                                 sink.clear();
                                 sink.append(source);
                                 sink.play();
@@ -106,6 +122,15 @@ fn run_audio_player() -> impl Stream<Item = AudioMessage> {
                 AudioCommand::Stop => {
                     if let Some(sink) = sink.as_mut() {
                         sink.stop();
+                    }
+                }
+                AudioCommand::QueryPosition => {
+                    if let Some(sink) = sink.as_mut() {
+                        if let Some(duration) = duration.as_ref() {
+                            let position = sink.get_pos().as_secs_f32() / duration.as_secs_f32();
+
+                            output.send(Message::Waveform(WaveformMessage::PlayPosition(position))).await.unwrap();
+                        }
                     }
                 }
             }

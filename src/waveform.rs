@@ -39,6 +39,7 @@ pub enum WaveformMessage {
     LoadingFinished,
     Clear,
     SamplesReady { path: Vec<i16>, generation: usize },
+    PlayPosition(f32),
 }
 
 #[derive(Default)]
@@ -46,6 +47,7 @@ pub struct Waveform {
     cache: Cache,
     samples: Vec<i16>,
     total_samples: usize,
+    play_position: f32,
     command_sender: Option<mpsc::Sender<WaveformCommand>>,
     current_generation: usize,
 }
@@ -112,6 +114,9 @@ impl Waveform {
             WaveformMessage::Clear => {
                 self.samples.clear();
                 self.total_samples = 0;
+            }
+            WaveformMessage::PlayPosition(position) => {
+                self.play_position = position;
             }
         }
 
@@ -300,6 +305,7 @@ impl canvas::Program<Message> for Waveform {
             let block_size = self.total_samples / frame.width() as usize;
             let palette = theme.palette();
 
+            // Draw background
             frame.fill_rectangle(
                 Point::new(0.0, frame.height() / 2.0),
                 Size::new(frame.width(), 1.0),
@@ -307,6 +313,7 @@ impl canvas::Program<Message> for Waveform {
             );
 
             if block_size > 0 {
+                // Draw waveform
                 for (index, block) in self.samples.chunks(block_size).enumerate() {
                     if let Some(max) = block.iter().max() {
                         let relative = *max as f32 / i16::MAX as f32;
@@ -319,6 +326,11 @@ impl canvas::Program<Message> for Waveform {
                         )
                     }
                 }
+
+                // Draw play position
+                let position = self.play_position * frame.width();
+
+                frame.fill_rectangle(Point::new(position, 0f32), Size::new(1f32, frame.height()), palette.success);
             }
         });
 
