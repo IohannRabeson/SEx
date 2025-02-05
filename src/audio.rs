@@ -1,12 +1,14 @@
 use std::{
     fs::File,
     io::BufReader,
-    path::{Path, PathBuf}, time::Duration,
+    path::{Path, PathBuf},
+    time::Duration,
 };
 
 use iced::{
     futures::{
-        channel::mpsc::{self, Sender}, SinkExt, Stream, StreamExt
+        channel::mpsc::{self, Sender},
+        SinkExt, Stream, StreamExt,
     },
     Subscription, Task,
 };
@@ -18,6 +20,7 @@ use crate::{waveform::WaveformMessage, Message};
 pub enum AudioMessage {
     Initialize(Sender<AudioCommand>),
     QueryPosition,
+    SetPosition(f32),
 }
 
 pub enum AudioCommand {
@@ -25,6 +28,7 @@ pub enum AudioCommand {
     Play(PathBuf),
     Stop,
     QueryPosition,
+    SetPosition(f32),
 }
 
 pub struct Audio {
@@ -53,6 +57,9 @@ impl Audio {
             AudioMessage::QueryPosition => {
                 self.send_command_if_possible(AudioCommand::QueryPosition);
             }
+            AudioMessage::SetPosition(position) => {
+                self.send_command_if_possible(AudioCommand::SetPosition(position));
+            }
         }
 
         Task::none()
@@ -60,10 +67,11 @@ impl Audio {
 
     pub fn subscription(&self) -> Subscription<Message> {
         const UI_FRAME_DURATION: Duration = Duration::from_millis(1000 / 60);
-        
+
         Subscription::batch([
             Subscription::run(run_audio_player),
-            iced::time::every(UI_FRAME_DURATION).map(|_|Message::Audio(AudioMessage::QueryPosition)),
+            iced::time::every(UI_FRAME_DURATION)
+                .map(|_| Message::Audio(AudioMessage::QueryPosition)),
         ])
     }
 
@@ -99,9 +107,13 @@ fn run_audio_player() -> impl Stream<Item = Message> {
 
         let mut sink = None;
 
-        output.send(Message::Audio(AudioMessage::Initialize(command_sender))).await.unwrap();
+        output
+            .send(Message::Audio(AudioMessage::Initialize(command_sender)))
+            .await
+            .unwrap();
 
-        let mut duration = None;
+        let mut current_file_duration = None;
+        let mut current_file_path = None;
 
         while let Some(command) = command_receiver.next().await {
             match command {
@@ -111,10 +123,12 @@ fn run_audio_player() -> impl Stream<Item = Message> {
                 }
                 AudioCommand::Play(path) => {
                     if let Some(sink) = sink.as_mut() {
-                        if let Ok(file) = File::open(path) {
+                        if let Ok(file) = File::open(&path) {
                             if let Ok(source) = rodio::Decoder::new(BufReader::new(file)) {
-                                duration = source.total_duration();
+                                current_file_path = Some(path);
+                                current_file_duration = source.total_duration();
                                 sink.clear();
+                                sink.stop();
                                 sink.append(source);
                                 sink.play();
                             }
@@ -128,10 +142,35 @@ fn run_audio_player() -> impl Stream<Item = Message> {
                 }
                 AudioCommand::QueryPosition => {
                     if let Some(sink) = sink.as_mut() {
-                        if let Some(duration) = duration.as_ref() {
+                        if let Some(duration) = current_file_duration.as_ref() {
                             let position = sink.get_pos().as_secs_f32() / duration.as_secs_f32();
 
-                            output.send(Message::Waveform(WaveformMessage::PlayPosition(position))).await.unwrap();
+                            output
+                                .send(Message::Waveform(WaveformMessage::PlayPosition(position)))
+                                .await
+                                .unwrap();
+                        }
+                    }
+                }
+                AudioCommand::SetPosition(position) => {
+                    if let Some(sink) = sink.as_mut() {
+                        if let Some(duration) = current_file_duration.as_ref() {
+                            let position =
+                                Duration::from_secs_f32(duration.as_secs_f32() * position);
+                            if sink.empty() {
+                                if let Some(path) = current_file_path.as_ref() {
+                                    if let Ok(file) = File::open(path) {
+                                        if let Ok(source) =
+                                            rodio::Decoder::new(BufReader::new(file))
+                                        {
+                                            sink.append(source);
+                                            sink.play();
+                                        }
+                                    }
+                                }
+                            }
+
+                            sink.try_seek(position).unwrap();
                         }
                     }
                 }
