@@ -110,7 +110,7 @@ impl SEx {
                 self.panes.resize(split, ratio);
             }
             Message::Waveform(message) => {
-                self.waveform.update(message);
+                return self.waveform.update(message);
             }
             Message::Audio(message) => {
                 return self.audio.update(message);
