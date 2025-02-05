@@ -6,18 +6,20 @@ use std::{
 };
 
 use iced::{
+    event,
     futures::{channel::mpsc, FutureExt, SinkExt, Stream, StreamExt},
     mouse,
     theme::Palette,
     widget::{
         canvas::{self, Cache},
-        Canvas,
+        container, Canvas, MouseArea,
     },
-    Color, Element, Length, Point, Rectangle, Renderer, Size, Subscription, Theme,
+    window, Color, Element, Event, Length, Point, Rectangle, Renderer, Size, Subscription, Task,
+    Theme,
 };
 use rodio::{Decoder, Source};
 
-use crate::Message;
+use crate::{audio::AudioMessage, Message};
 
 pub enum WaveformCommand {
     LoadFile {
@@ -40,6 +42,9 @@ pub enum WaveformMessage {
     Clear,
     SamplesReady { path: Vec<i16>, generation: usize },
     PlayPosition(f32),
+    Click(Point),
+    Resized,
+    BoundsChanged(Option<Rectangle>),
 }
 
 #[derive(Default)]
@@ -50,6 +55,7 @@ pub struct Waveform {
     play_position: f32,
     command_sender: Option<mpsc::Sender<WaveformCommand>>,
     current_generation: usize,
+    bounds: Option<Rectangle>,
 }
 
 enum State {
@@ -87,7 +93,7 @@ impl Waveform {
         self.samples.clear();
     }
 
-    pub fn update(&mut self, message: WaveformMessage) {
+    pub fn update(&mut self, message: WaveformMessage) -> Task<Message> {
         match message {
             WaveformMessage::Initialized(command_sender) => {
                 println!("Waveform initialized");
@@ -118,20 +124,48 @@ impl Waveform {
             WaveformMessage::PlayPosition(position) => {
                 self.play_position = position;
             }
+            WaveformMessage::Click(point) => {
+                if let Some(bounds) = self.bounds.as_ref() {
+                    let position = point.x / bounds.width;
+
+                    return Task::done(Message::Audio(AudioMessage::SetPosition(position)));
+                }
+            }
+            WaveformMessage::Resized => {
+                return container::visible_bounds(WAVEFORM_CONTAINER.clone())
+                    .map(|rectangle| Message::Waveform(WaveformMessage::BoundsChanged(rectangle)))
+            }
+            WaveformMessage::BoundsChanged(rectangle) => {
+                self.bounds = rectangle;
+            }
         }
 
         self.cache.clear();
+
+        Task::none()
     }
 
     pub fn view(&self) -> Element<Message> {
-        Canvas::new(self)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .into()
+        MouseArea::new(
+            container(Canvas::new(self).width(Length::Fill).height(Length::Fill))
+                .id(WAVEFORM_CONTAINER.clone()),
+        )
+        .on_press_position(|position| Message::Waveform(WaveformMessage::Click(position)))
+        .into()
     }
 
     pub fn subscription(&self) -> Subscription<Message> {
-        Subscription::run(waveform_loading).map(Message::Waveform)
+        Subscription::batch([
+            Subscription::run(waveform_loading).map(Message::Waveform),
+            event::listen_with(|event, _status, _id| -> Option<Message> {
+                match event {
+                    Event::Window(window::Event::Resized { .. }) => {
+                        Some(Message::Waveform(WaveformMessage::Resized))
+                    }
+                    _ => None,
+                }
+            }),
+        ])
     }
 }
 
@@ -299,7 +333,7 @@ impl canvas::Program<Message> for Waveform {
         renderer: &Renderer,
         theme: &Theme,
         bounds: Rectangle,
-        _cursor: mouse::Cursor,
+        cursor: mouse::Cursor,
     ) -> Vec<canvas::Geometry<Renderer>> {
         let geometry = self.cache.draw(renderer, bounds.size(), |frame| {
             let block_size = self.total_samples / frame.width() as usize;
@@ -328,12 +362,28 @@ impl canvas::Program<Message> for Waveform {
                 }
 
                 // Draw play position
-                let position = self.play_position * frame.width();
+                frame.fill_rectangle(
+                    Point::new(self.play_position * frame.width(), 0f32),
+                    Size::new(1f32, frame.height()),
+                    palette.success,
+                );
 
-                frame.fill_rectangle(Point::new(position, 0f32), Size::new(1f32, frame.height()), palette.success);
+                // Draw cursor position
+                if let Some(cursor_position) = cursor.position_in(bounds) {
+                    frame.fill_rectangle(
+                        Point::new(cursor_position.x, 0f32),
+                        Size::new(1f32, frame.height()),
+                        Color::from_rgb8(150, 150, 150),
+                    );
+                }
             }
         });
 
         vec![geometry]
     }
 }
+
+use std::sync::LazyLock;
+
+static WAVEFORM_CONTAINER: LazyLock<container::Id> =
+    LazyLock::new(|| container::Id::new("waveform"));
