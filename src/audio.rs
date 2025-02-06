@@ -106,6 +106,7 @@ fn run_audio_player() -> impl Stream<Item = Message> {
         let (command_sender, mut command_receiver) = mpsc::channel::<AudioCommand>(8);
 
         let mut sink = None;
+        let mut output_stream_handle = None;
 
         output
             .send(Message::Audio(AudioMessage::Initialize(command_sender)))
@@ -117,20 +118,24 @@ fn run_audio_player() -> impl Stream<Item = Message> {
 
         while let Some(command) = command_receiver.next().await {
             match command {
-                AudioCommand::Initialize(output_stream_handle) => {
+                AudioCommand::Initialize(handle) => {
                     println!("Create audio sink");
-                    sink = rodio::Sink::try_new(&output_stream_handle).ok();
+                    output_stream_handle = Some(handle.clone());
                 }
                 AudioCommand::Play(path) => {
-                    if let Some(sink) = sink.as_mut() {
-                        if let Ok(file) = File::open(&path) {
-                            if let Ok(source) = rodio::Decoder::new(BufReader::new(file)) {
-                                current_file_path = Some(path);
-                                current_file_duration = source.total_duration();
-                                sink.clear();
-                                sink.stop();
-                                sink.append(source);
-                                sink.play();
+                    // There is a bug where when I change tracks quickly the playing speed starts to change if I keep using the
+                    // same Sink again and again. To fix that I'm creating a Sink everytime I play a sound but I should be able to keep the same sink.
+                    // https://github.com/IohannRabeson/SEx/issues/8
+                    if let Some(output_stream_handle) = output_stream_handle.as_ref() {
+                        sink = rodio::Sink::try_new(&output_stream_handle).ok();
+                        if let Some(sink) = sink.as_mut() {
+                            if let Ok(file) = File::open(&path) {
+                                if let Ok(source) = rodio::Decoder::new(BufReader::new(file)) {
+                                    current_file_path = Some(path);
+                                    current_file_duration = source.total_duration();
+                                    sink.append(source);
+                                    sink.play();
+                                }
                             }
                         }
                     }
