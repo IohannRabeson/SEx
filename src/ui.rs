@@ -1,6 +1,6 @@
 use iced::{
     alignment::Vertical,
-    widget::{container, image, MouseArea, Row},
+    widget::{container, image, text::Wrapping, MouseArea, Row},
     Element, Padding, Theme,
 };
 
@@ -27,7 +27,7 @@ pub fn file_entry<'a>(
         )
         .padding(Padding::from([0, 4]))
     }));
-    row = row.push(iced::widget::text(text.to_string()).size(FONT_SIZE));
+    row = row.push(iced::widget::text(text.to_string()).size(FONT_SIZE).wrapping(Wrapping::None));
     row = row.align_y(Vertical::Center);
 
     let mut selectable_part = container(row);
