@@ -127,7 +127,7 @@ fn run_audio_player() -> impl Stream<Item = Message> {
                     // same Sink again and again. To fix that I'm creating a Sink everytime I play a sound but I should be able to keep the same sink.
                     // https://github.com/IohannRabeson/SEx/issues/8
                     if let Some(output_stream_handle) = output_stream_handle.as_ref() {
-                        sink = rodio::Sink::try_new(&output_stream_handle).ok();
+                        sink = rodio::Sink::try_new(output_stream_handle).ok();
                         if let Some(sink) = sink.as_mut() {
                             if let Ok(file) = File::open(&path) {
                                 if let Ok(source) = rodio::Decoder::new(BufReader::new(file)) {

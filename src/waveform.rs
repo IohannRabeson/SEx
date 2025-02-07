@@ -288,7 +288,7 @@ async fn process_command(
                     let samples_count = samples_count / DIVISOR;
 
                     println!("Sample rate: {}", decoder.sample_rate());
-                    
+
                     output
                         .send(WaveformMessage::LoadingStarted(samples_count as usize))
                         .await
