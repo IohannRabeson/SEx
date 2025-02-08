@@ -341,7 +341,7 @@ impl canvas::Program<Message> for Waveform {
             let samples_in_block = self.total_samples / frame.width() as usize;
             let palette = theme.palette();
 
-            // Draw background
+            // Draw central line
             frame.fill_rectangle(
                 Point::new(0.0, frame.height() / 2.0),
                 Size::new(frame.width(), 1.0),
