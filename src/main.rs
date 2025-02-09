@@ -11,6 +11,8 @@ use iced::{
 use icon_provider::IconProvider;
 use rfd::AsyncFileDialog;
 use search::{Search, SearchMessage};
+use visualization::{Visualization, VisualizationMessage};
+use vu_meter::{VuMeter, VuMeterMessage};
 use waveform::{Waveform, WaveformMessage};
 
 mod audio;
@@ -18,6 +20,8 @@ mod file_explorer;
 mod icon_provider;
 mod search;
 mod ui;
+mod visualization;
+mod vu_meter;
 mod waveform;
 
 fn main() -> iced::Result {
@@ -35,6 +39,8 @@ enum Message {
     Search(SearchMessage),
     Waveform(WaveformMessage),
     Audio(AudioMessage),
+    VuMeter(VuMeterMessage),
+    Visualization(VisualizationMessage),
     PaneResized(pane_grid::ResizeEvent),
     /// Send this message to show the waveform of a file and play it using Task::done.
     /// Send SelectFile(None) to clear the waveform and stop playing audio.
@@ -49,6 +55,7 @@ enum View {
 enum PaneState {
     Explorer,
     Waveform,
+    VuMeter,
 }
 
 struct SEx {
@@ -58,19 +65,27 @@ struct SEx {
     view: View,
     panes: pane_grid::State<PaneState>,
     waveform: Waveform,
+    vu_meter: VuMeter,
     icon_provider: IconProvider,
+    visualization: Visualization,
 }
 
 impl SEx {
     fn new() -> (Self, Task<Message>) {
         let (mut panes, waveform_pane) = pane_grid::State::new(PaneState::Waveform);
 
-        if let Some((_, split)) = panes.split(
+        if let Some((_, explorer_waveform_split)) = panes.split(
             pane_grid::Axis::Horizontal,
             waveform_pane,
             PaneState::Explorer,
         ) {
-            panes.resize(split, 0.1);
+            panes.resize(explorer_waveform_split, 0.1);
+        }
+
+        if let Some((_, waveform_vu_meter_split)) =
+            panes.split(pane_grid::Axis::Vertical, waveform_pane, PaneState::VuMeter)
+        {
+            panes.resize(waveform_vu_meter_split, 0.95);
         }
 
         (
@@ -82,6 +97,8 @@ impl SEx {
                 panes,
                 waveform: Waveform::default(),
                 icon_provider: IconProvider::default(),
+                vu_meter: VuMeter::new(),
+                visualization: Visualization::new(),
             },
             Task::perform(select_existing_directory(), Message::OpenDirectory),
         )
@@ -115,6 +132,9 @@ impl SEx {
             Message::Audio(message) => {
                 return self.audio.update(message);
             }
+            Message::VuMeter(message) => {
+                self.vu_meter.update(message);
+            }
             Message::SelectFile(Some(path)) => {
                 if path.is_file() && is_file_contains_audio(&path) {
                     self.audio.play(&path);
@@ -127,6 +147,7 @@ impl SEx {
                 self.audio.stop();
                 self.waveform.clear();
             }
+            Message::Visualization(message) => return self.visualization.update(message),
         }
 
         Task::none()
@@ -145,6 +166,7 @@ impl SEx {
                     .into(),
             },
             PaneState::Waveform => self.waveform.view().into(),
+            PaneState::VuMeter => self.vu_meter.view().into(),
         });
 
         pane_grid
