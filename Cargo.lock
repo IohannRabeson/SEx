@@ -549,9 +549,9 @@ dependencies = [
 
 [[package]]
 name = "built"
-version = "0.7.5"
+version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c360505aed52b7ec96a3636c3f039d99103c37d1d9b4f7a8c743d3ea9ffcd03b"
+checksum = "73848a43c5d63a1251d17adf6c2bf78aa94830e60a335a95eeea45d6ba9e1e4d"
 
 [[package]]
 name = "bumpalo"
@@ -656,9 +656,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.2.12"
+version = "1.2.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "755717a7de9ec452bf7f3f1a3099085deabd7f2962b861dae91ecd7a365903d2"
+checksum = "c7777341816418c02e033934a09f20dc0ccaf65a5201ef8a450ae0105a573fda"
 dependencies = [
  "jobserver",
  "libc",
@@ -2017,7 +2017,7 @@ checksum = "62adaabb884c94955b19907d60019f4e145d091c75345379e70d1ee696f7854f"
 [[package]]
 name = "iced"
 version = "0.14.0-dev"
-source = "git+https://github.com/IohannRabeson/iced?branch=mouse_area_position#09526d4c237e1edacbdce3f36bc41158ffa5ed5d"
+source = "git+https://github.com/IohannRabeson/iced#7ace8897344a04c39af7cbf6510250a149950700"
 dependencies = [
  "iced_core",
  "iced_futures",
@@ -2031,7 +2031,7 @@ dependencies = [
 [[package]]
 name = "iced_core"
 version = "0.14.0-dev"
-source = "git+https://github.com/IohannRabeson/iced?branch=mouse_area_position#09526d4c237e1edacbdce3f36bc41158ffa5ed5d"
+source = "git+https://github.com/IohannRabeson/iced#7ace8897344a04c39af7cbf6510250a149950700"
 dependencies = [
  "bitflags 2.8.0",
  "bytes",
@@ -2050,7 +2050,7 @@ dependencies = [
 [[package]]
 name = "iced_futures"
 version = "0.14.0-dev"
-source = "git+https://github.com/IohannRabeson/iced?branch=mouse_area_position#09526d4c237e1edacbdce3f36bc41158ffa5ed5d"
+source = "git+https://github.com/IohannRabeson/iced#7ace8897344a04c39af7cbf6510250a149950700"
 dependencies = [
  "async-std",
  "futures",
@@ -2064,7 +2064,7 @@ dependencies = [
 [[package]]
 name = "iced_graphics"
 version = "0.14.0-dev"
-source = "git+https://github.com/IohannRabeson/iced?branch=mouse_area_position#09526d4c237e1edacbdce3f36bc41158ffa5ed5d"
+source = "git+https://github.com/IohannRabeson/iced#7ace8897344a04c39af7cbf6510250a149950700"
 dependencies = [
  "bitflags 2.8.0",
  "bytemuck",
@@ -2085,7 +2085,7 @@ dependencies = [
 [[package]]
 name = "iced_renderer"
 version = "0.14.0-dev"
-source = "git+https://github.com/IohannRabeson/iced?branch=mouse_area_position#09526d4c237e1edacbdce3f36bc41158ffa5ed5d"
+source = "git+https://github.com/IohannRabeson/iced#7ace8897344a04c39af7cbf6510250a149950700"
 dependencies = [
  "iced_graphics",
  "iced_tiny_skia",
@@ -2097,7 +2097,7 @@ dependencies = [
 [[package]]
 name = "iced_runtime"
 version = "0.14.0-dev"
-source = "git+https://github.com/IohannRabeson/iced?branch=mouse_area_position#09526d4c237e1edacbdce3f36bc41158ffa5ed5d"
+source = "git+https://github.com/IohannRabeson/iced#7ace8897344a04c39af7cbf6510250a149950700"
 dependencies = [
  "bytes",
  "iced_core",
@@ -2109,7 +2109,7 @@ dependencies = [
 [[package]]
 name = "iced_tiny_skia"
 version = "0.14.0-dev"
-source = "git+https://github.com/IohannRabeson/iced?branch=mouse_area_position#09526d4c237e1edacbdce3f36bc41158ffa5ed5d"
+source = "git+https://github.com/IohannRabeson/iced#7ace8897344a04c39af7cbf6510250a149950700"
 dependencies = [
  "bytemuck",
  "cosmic-text",
@@ -2125,7 +2125,7 @@ dependencies = [
 [[package]]
 name = "iced_wgpu"
 version = "0.14.0-dev"
-source = "git+https://github.com/IohannRabeson/iced?branch=mouse_area_position#09526d4c237e1edacbdce3f36bc41158ffa5ed5d"
+source = "git+https://github.com/IohannRabeson/iced#7ace8897344a04c39af7cbf6510250a149950700"
 dependencies = [
  "bitflags 2.8.0",
  "bytemuck",
@@ -2145,7 +2145,7 @@ dependencies = [
 [[package]]
 name = "iced_widget"
 version = "0.14.0-dev"
-source = "git+https://github.com/IohannRabeson/iced?branch=mouse_area_position#09526d4c237e1edacbdce3f36bc41158ffa5ed5d"
+source = "git+https://github.com/IohannRabeson/iced#7ace8897344a04c39af7cbf6510250a149950700"
 dependencies = [
  "iced_renderer",
  "iced_runtime",
@@ -2159,7 +2159,7 @@ dependencies = [
 [[package]]
 name = "iced_winit"
 version = "0.14.0-dev"
-source = "git+https://github.com/IohannRabeson/iced?branch=mouse_area_position#09526d4c237e1edacbdce3f36bc41158ffa5ed5d"
+source = "git+https://github.com/IohannRabeson/iced#7ace8897344a04c39af7cbf6510250a149950700"
 dependencies = [
  "iced_futures",
  "iced_graphics",
@@ -5697,9 +5697,9 @@ dependencies = [
 
 [[package]]
 name = "zbus"
-version = "5.4.0"
+version = "5.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cbddd8b6cb25d5d8ec1b23277b45299a98bfb220f1761ca11e186d5c702507f8"
+checksum = "59c333f648ea1b647bc95dc1d34807c8e25ed7a6feff3394034dc4776054b236"
 dependencies = [
  "async-broadcast",
  "async-executor",
@@ -5714,7 +5714,7 @@ dependencies = [
  "enumflags2",
  "event-listener 5.4.0",
  "futures-core",
- "futures-util",
+ "futures-lite",
  "hex",
  "nix",
  "ordered-stream",
@@ -5733,9 +5733,9 @@ dependencies = [
 
 [[package]]
 name = "zbus_macros"
-version = "5.4.0"
+version = "5.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dac404d48b4e9cf193c8b49589f3280ceca5ff63519e7e64f55b4cf9c47ce146"
+checksum = "f325ad10eb0d0a3eb060203494c3b7ec3162a01a59db75d2deee100339709fc0"
 dependencies = [
  "proc-macro-crate 3.2.0",
  "proc-macro2",
@@ -5854,9 +5854,9 @@ dependencies = [
 
 [[package]]
 name = "zvariant"
-version = "5.3.0"
+version = "5.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31c951c21879c6e1d46ac5adfc34f698fefb465d498cf4ac87545849bd71bb5a"
+checksum = "b2df9ee044893fcffbdc25de30546edef3e32341466811ca18421e3cd6c5a3ac"
 dependencies = [
  "endi",
  "enumflags2",
@@ -5870,9 +5870,9 @@ dependencies = [
 
 [[package]]
 name = "zvariant_derive"
-version = "5.3.0"
+version = "5.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9eeb539471af098d9e63faf428c71ac4cd4efe0b5baa3c8a6b991c5f2543b70e"
+checksum = "74170caa85b8b84cc4935f2d56a57c7a15ea6185ccdd7eadb57e6edd90f94b2f"
 dependencies = [
  "proc-macro-crate 3.2.0",
  "proc-macro2",

@@ -51,7 +51,7 @@ impl Search {
     pub fn view_input(&self) -> Element<Message> {
         text_input("Search", &self.input)
             .on_input(|text| Message::Search(SearchMessage::SearchTextChanged(text)))
-            .size(14u16)
+            .size(14u32)
             .into()
     }
 

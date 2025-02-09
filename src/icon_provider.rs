@@ -23,7 +23,7 @@ impl Default for IconProvider {
         Self {
             cache: RefCell::new(BTreeMap::new()),
             #[cfg(target_os = "macos")]
-            size: ui::ICON_SIZE * 2,
+            size: (ui::ICON_SIZE * 2) as u16,
             #[cfg(not(target_os = "macos"))]
             size: ui::ICON_SIZE,
         }

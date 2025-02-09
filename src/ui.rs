@@ -6,7 +6,7 @@ use iced::{
 
 use crate::Message;
 
-pub(crate) const ICON_SIZE: u16 = 20;
+pub(crate) const ICON_SIZE: u32 = 20;
 
 pub fn file_entry<'a>(
     text: impl ToString,
@@ -14,7 +14,7 @@ pub fn file_entry<'a>(
     icon: Option<image::Handle>,
     selected: bool,
 ) -> Element<'a, Message> {
-    const FONT_SIZE: u16 = 14;
+    const FONT_SIZE: u32 = 14;
 
     let mut row = Row::new();
 
