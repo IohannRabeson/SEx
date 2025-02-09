@@ -338,7 +338,7 @@ impl canvas::Program<Message> for Waveform {
         cursor: mouse::Cursor,
     ) -> Vec<canvas::Geometry<Renderer>> {
         let geometry = self.cache.draw(renderer, bounds.size(), |frame| {
-            let block_size = self.total_samples / frame.width() as usize;
+            let samples_in_block = self.total_samples / frame.width() as usize;
             let palette = theme.palette();
 
             // Draw background
@@ -348,9 +348,9 @@ impl canvas::Program<Message> for Waveform {
                 line_color(&palette, self.total_samples > 0),
             );
 
-            if block_size > 0 {
+            if samples_in_block > 0 {
                 // Draw waveform
-                for (index, block) in self.samples.chunks(block_size).enumerate() {
+                for (index, block) in self.samples.chunks(samples_in_block).enumerate() {
                     if let Some(max) = block.iter().max() {
                         let relative = *max as f32 / i16::MAX as f32;
                         let height = relative * frame.height();
