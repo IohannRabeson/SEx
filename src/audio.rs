@@ -5,6 +5,7 @@ use std::{
     time::Duration,
 };
 
+use details::SourcePicker;
 use iced::{
     futures::{
         channel::mpsc::{self, Sender},
@@ -14,7 +15,7 @@ use iced::{
 };
 use rodio::{OutputStream, OutputStreamHandle, Source};
 
-use crate::{waveform::WaveformMessage, Message};
+use crate::{visualization::VisualizationMessage, waveform::WaveformMessage, Message};
 
 #[derive(Debug, Clone)]
 pub enum AudioMessage {
@@ -101,7 +102,7 @@ impl Audio {
 }
 
 fn run_audio_player() -> impl Stream<Item = Message> {
-    iced::stream::channel(1, |mut output| async move {
+    iced::stream::channel(8, |mut output| async move {
         println!("Start audio subscription");
         let (command_sender, mut command_receiver) = mpsc::channel::<AudioCommand>(8);
 
@@ -115,6 +116,12 @@ fn run_audio_player() -> impl Stream<Item = Message> {
 
         let mut current_file_duration = None;
         let mut current_file_path = None;
+
+        let create_source_output = output.clone();
+        let create_source = |file| {
+            rodio::Decoder::new(BufReader::new(file))
+                .map(|source| SourcePicker::new(source, create_source_output.clone()))
+        };
 
         while let Some(command) = command_receiver.next().await {
             match command {
@@ -130,7 +137,7 @@ fn run_audio_player() -> impl Stream<Item = Message> {
                         sink = rodio::Sink::try_new(output_stream_handle).ok();
                         if let Some(sink) = sink.as_mut() {
                             if let Ok(file) = File::open(&path) {
-                                if let Ok(source) = rodio::Decoder::new(BufReader::new(file)) {
+                                if let Ok(source) = create_source(file) {
                                     current_file_path = Some(path);
                                     current_file_duration = source.total_duration();
                                     sink.append(source);
@@ -143,6 +150,16 @@ fn run_audio_player() -> impl Stream<Item = Message> {
                 AudioCommand::Stop => {
                     if let Some(sink) = sink.as_mut() {
                         sink.stop();
+
+                        current_file_path = None;
+                        current_file_duration = None;
+
+                        // Send an empty audio buffer to clear visualizers.
+                        output
+                            .try_send(Message::Visualization(VisualizationMessage::AudioBuffer(
+                                Vec::new(),
+                            )))
+                            .unwrap();
                     }
                 }
                 AudioCommand::QueryPosition => {
@@ -165,9 +182,7 @@ fn run_audio_player() -> impl Stream<Item = Message> {
                             if sink.empty() {
                                 if let Some(path) = current_file_path.as_ref() {
                                     if let Ok(file) = File::open(path) {
-                                        if let Ok(source) =
-                                            rodio::Decoder::new(BufReader::new(file))
-                                        {
+                                        if let Ok(source) = create_source(file) {
                                             sink.append(source);
                                             sink.play();
                                         }
@@ -182,4 +197,105 @@ fn run_audio_player() -> impl Stream<Item = Message> {
             }
         }
     })
+}
+
+mod details {
+    use std::time::Duration;
+
+    use iced::futures::channel::mpsc::Sender;
+    use rodio::{source::SeekError, Sample};
+
+    use crate::{visualization::VisualizationMessage, Message};
+
+    pub(crate) struct SourcePicker<S>
+    where
+        S: rodio::Source + Send + 'static,
+        S::Item: rodio::Sample + Send,
+    {
+        buffer: Vec<S::Item>,
+        source: S,
+        sender: Sender<Message>,
+    }
+
+    const BUFFER_SIZE: usize = 256;
+
+    impl<S> SourcePicker<S>
+    where
+        S: rodio::Source + Send + 'static,
+        S::Item: rodio::Sample + Send,
+    {
+        pub fn new(source: S, sender: Sender<Message>) -> Self {
+            Self {
+                buffer: Vec::with_capacity(BUFFER_SIZE),
+                source,
+                sender,
+            }
+        }
+
+        fn push_sample(&mut self, sample: S::Item) {
+            self.buffer.push(sample);
+            if self.buffer.len() == BUFFER_SIZE {
+                self.submit_buffer();
+            }
+        }
+
+        fn submit_buffer(&mut self) {
+            self.sender
+                .try_send(Message::Visualization(VisualizationMessage::AudioBuffer(
+                    self.buffer.iter().map(|sample| sample.to_f32()).collect(),
+                )))
+                .unwrap();
+
+            self.buffer.clear();
+        }
+    }
+
+    impl<S> rodio::Source for SourcePicker<S>
+    where
+        S: rodio::Source + Send + 'static,
+        S::Item: rodio::Sample + Send,
+    {
+        fn current_frame_len(&self) -> Option<usize> {
+            self.source.current_frame_len()
+        }
+
+        fn channels(&self) -> u16 {
+            self.source.channels()
+        }
+
+        fn sample_rate(&self) -> u32 {
+            self.source.sample_rate()
+        }
+
+        fn total_duration(&self) -> Option<std::time::Duration> {
+            self.source.total_duration()
+        }
+
+        fn try_seek(&mut self, pos: Duration) -> Result<(), SeekError> {
+            self.source.try_seek(pos)
+        }
+    }
+
+    impl<S> Iterator for SourcePicker<S>
+    where
+        S: rodio::Source + Send + 'static,
+        S::Item: rodio::Sample + Send + Copy,
+    {
+        type Item = S::Item;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            match self.source.next() {
+                Some(sample) => {
+                    self.push_sample(sample);
+                    Some(sample)
+                }
+                None => {
+                    // Clear the buffer then submit the empty buffer to send a zero value.
+                    self.buffer.clear();
+                    self.submit_buffer();
+                    None
+                }
+            }
+        }
+    }
 }
