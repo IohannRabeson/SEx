@@ -281,25 +281,26 @@ async fn process_command(
         WaveformCommand::LoadFile { path, generation } => {
             if let Ok(file) = File::open(path) {
                 if let Ok(decoder) = Decoder::new(BufReader::new(file)) {
-                    let duration = decoder.total_duration().expect("get total duration");
-                    let sample_rate = decoder.sample_rate() as u128;
-                    let samples_count = duration.as_nanos() * sample_rate;
-                    const DIVISOR: u128 = 1_000_000_000;
-                    let samples_count = samples_count / DIVISOR;
+                    if let Some(duration) = decoder.total_duration() {
+                        let sample_rate = decoder.sample_rate() as u128;
+                        let samples_count = duration.as_nanos() * sample_rate;
+                        const DIVISOR: u128 = 1_000_000_000;
+                        let samples_count = samples_count / DIVISOR;
 
-                    println!("Sample rate: {}", decoder.sample_rate());
+                        println!("Sample rate: {}", decoder.sample_rate());
 
-                    output
-                        .send(WaveformMessage::LoadingStarted(samples_count as usize))
-                        .await
-                        .unwrap();
+                        output
+                            .send(WaveformMessage::LoadingStarted(samples_count as usize))
+                            .await
+                            .unwrap();
 
-                    return State::Decoding {
-                        decoder: Box::new(decoder),
-                        samples_count: samples_count as usize,
-                        sample_rate: sample_rate as usize,
-                        generation,
-                    };
+                        return State::Decoding {
+                            decoder: Box::new(decoder),
+                            samples_count: samples_count as usize,
+                            sample_rate: sample_rate as usize,
+                            generation,
+                        };
+                    }
                 }
             }
 
