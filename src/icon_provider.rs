@@ -25,7 +25,7 @@ impl Default for IconProvider {
             #[cfg(target_os = "macos")]
             size: (ui::ICON_SIZE * 2) as u16,
             #[cfg(not(target_os = "macos"))]
-            size: ui::ICON_SIZE,
+            size: ui::ICON_SIZE as u16,
         }
     }
 }
