@@ -1,8 +1,5 @@
 use std::{
-    fs::File,
-    io::BufReader,
-    path::{Path, PathBuf},
-    time::Duration,
+    fs::File, io::BufReader, path::{Path, PathBuf}, sync::Arc, time::Duration
 };
 
 use details::SourcePicker;
@@ -13,7 +10,7 @@ use iced::{
     },
     Subscription, Task,
 };
-use rodio::{OutputStream, OutputStreamHandle, Source};
+use rodio::{mixer::Mixer, OutputStream, Source};
 
 use crate::{visualization::VisualizationMessage, waveform::WaveformMessage, Message};
 
@@ -25,7 +22,7 @@ pub enum AudioMessage {
 }
 
 pub enum AudioCommand {
-    Initialize(OutputStreamHandle),
+    Initialize(Arc<Mixer<f32>>),
     Play(PathBuf),
     Stop,
     QueryPosition,
@@ -35,17 +32,18 @@ pub enum AudioCommand {
 pub struct Audio {
     command_sender: Option<Sender<AudioCommand>>,
     _output_stream: OutputStream,
-    output_stream_handle: OutputStreamHandle,
+    mixer: Arc<Mixer<f32>>,
 }
 
 impl Audio {
     pub fn new() -> Self {
-        let (output_stream, output_stream_handle) = rodio::OutputStream::try_default().unwrap();
+        let output_stream = rodio::OutputStreamBuilder::open_default_stream().unwrap();
+        let mixer = output_stream.mixer();
 
         Self {
             command_sender: None,
             _output_stream: output_stream,
-            output_stream_handle,
+            mixer,
         }
     }
 
@@ -53,7 +51,7 @@ impl Audio {
         match message {
             AudioMessage::Initialize(command_sender) => {
                 self.command_sender = Some(command_sender);
-                self.send_command(AudioCommand::Initialize(self.output_stream_handle.clone()));
+                self.send_command(AudioCommand::Initialize(self.mixer.clone()));
             }
             AudioMessage::QueryPosition => {
                 self.send_command_if_possible(AudioCommand::QueryPosition);
@@ -107,7 +105,7 @@ fn run_audio_player() -> impl Stream<Item = Message> {
         let (command_sender, mut command_receiver) = mpsc::channel::<AudioCommand>(8);
 
         let mut sink = None;
-        let mut output_stream_handle = None;
+        let mut mixer = None;
 
         output
             .send(Message::Audio(AudioMessage::Initialize(command_sender)))
@@ -125,16 +123,16 @@ fn run_audio_player() -> impl Stream<Item = Message> {
 
         while let Some(command) = command_receiver.next().await {
             match command {
-                AudioCommand::Initialize(handle) => {
+                AudioCommand::Initialize(new_mixer) => {
                     println!("Create audio sink");
-                    output_stream_handle = Some(handle.clone());
+                    mixer = Some(new_mixer);
                 }
                 AudioCommand::Play(path) => {
                     // There is a bug where when I change tracks quickly the playing speed starts to change if I keep using the
                     // same Sink again and again. To fix that I'm creating a Sink everytime I play a sound but I should be able to keep the same sink.
                     // https://github.com/IohannRabeson/SEx/issues/8
-                    if let Some(output_stream_handle) = output_stream_handle.as_ref() {
-                        sink = rodio::Sink::try_new(output_stream_handle).ok();
+                    if let Some(mixer) = mixer.as_ref() {
+                        sink = Some(rodio::Sink::connect_new(mixer));
                         if let Some(sink) = sink.as_mut() {
                             if let Ok(file) = File::open(&path) {
                                 if let Ok(source) = create_source(file) {
