@@ -255,8 +255,8 @@ mod details {
         S: rodio::Source + Send + 'static,
         S::Item: rodio::Sample + Send,
     {
-        fn current_frame_len(&self) -> Option<usize> {
-            self.source.current_frame_len()
+        fn current_span_len(&self) -> Option<usize> {
+            self.source.current_span_len()
         }
 
         fn channels(&self) -> u16 {
