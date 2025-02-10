@@ -102,7 +102,7 @@ impl Audio {
 }
 
 fn run_audio_player() -> impl Stream<Item = Message> {
-    iced::stream::channel(8, |mut output| async move {
+    iced::stream::channel(256, |mut output| async move {
         println!("Start audio subscription");
         let (command_sender, mut command_receiver) = mpsc::channel::<AudioCommand>(8);
 
@@ -213,11 +213,10 @@ mod details {
         S::Item: rodio::Sample + Send,
     {
         buffer: Vec<S::Item>,
+        buffer_capacity: usize,
         source: S,
         sender: Sender<Message>,
     }
-
-    const BUFFER_SIZE: usize = 256;
 
     impl<S> SourcePicker<S>
     where
@@ -225,8 +224,11 @@ mod details {
         S::Item: rodio::Sample + Send,
     {
         pub fn new(source: S, sender: Sender<Message>) -> Self {
+            let buffer_capacity = source.sample_rate() as usize * source.channels() as usize / 60;
+
             Self {
-                buffer: Vec::with_capacity(BUFFER_SIZE),
+                buffer: Vec::with_capacity(buffer_capacity),
+                buffer_capacity,
                 source,
                 sender,
             }
@@ -234,7 +236,7 @@ mod details {
 
         fn push_sample(&mut self, sample: S::Item) {
             self.buffer.push(sample);
-            if self.buffer.len() == BUFFER_SIZE {
+            if self.buffer.len() == self.buffer_capacity {
                 self.submit_buffer();
             }
         }
