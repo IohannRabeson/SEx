@@ -211,9 +211,7 @@ fn waveform_loading() -> impl Stream<Item = WaveformMessage> {
                                 break 'outer;
                             }
 
-                            let next = decoder.next();
-
-                            accumulator += match next {
+                            accumulator += match decoder.next() {
                                 Some(sample) => sample as i32,
                                 None => {
                                     println!(
