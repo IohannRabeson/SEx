@@ -11,4 +11,4 @@ iced = { git = "https://github.com/IohannRabeson/iced", features = ["async-std",
 mime = "0.3.17"
 mime_guess = "2.0.5"
 rfd = "0.15.0"
-rodio = "0.20.1"
+rodio = { git = "https://github.com/RustAudio/rodio", features = ["integer-decoder"] }

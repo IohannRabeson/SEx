@@ -19,7 +19,7 @@ impl Visualization {
             VisualizationMessage::AudioBuffer(samples) => {
                 let rms = Self::compute_rms(&samples);
 
-                return Task::done(Message::VuMeter(VuMeterMessage::Rms(rms)));
+                Task::done(Message::VuMeter(VuMeterMessage::Rms(rms)))
             }
         }
     }
