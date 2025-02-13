@@ -1,5 +1,4 @@
 use iced::Task;
-use itertools::Itertools;
 
 use crate::{vu_meter::VuMeterMessage, Message};
 
@@ -33,19 +32,15 @@ impl Visualization {
         }
 
         let mut rms_per_channels = vec![0f32; channels];
-        let mut chunk_count = 0;
 
-        for mut chunk in &buffer.iter().chunks(channels) {
-            chunk_count += 1;
-            for i in 0 .. channels {
-                let sample = chunk.next().expect("chunks are always complete");
-
-                rms_per_channels[i] += sample * sample;
-            }
+        for (i, sample) in buffer.iter().enumerate() {
+            rms_per_channels[i % channels] += sample * sample;
         }
 
+        let frames_count = (buffer.len() / channels) as f32;
+
         for i in 0 .. channels {
-            rms_per_channels[i] /= chunk_count as f32;
+            rms_per_channels[i] /= frames_count;
             rms_per_channels[i] = rms_per_channels[i].sqrt();
         }
 
