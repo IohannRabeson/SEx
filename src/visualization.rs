@@ -52,3 +52,24 @@ impl Visualization {
         rms_per_channels
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use rstest::rstest;
+
+    use super::Visualization;
+
+    #[rstest]
+    #[case(2, &[], &[])]
+    #[case(1, &[0.5, 0.6, 0.7], &[0.60553007081949833307])]
+    #[case(2, &[0.5, 0.6, 0.7, 0.8], &[0.60827625302982196889, 0.70710678118654752440])]
+    fn test_compute_rms(#[case] channels: u16, #[case] buffer: &[f32], #[case] rms: &[f32]) {
+        let result = Visualization::compute_rms(channels, buffer);
+
+        assert_eq!(result.len(), rms.len());
+
+        for (result, expected) in result.iter().zip(rms.iter()) {
+            assert!((result - expected).abs() < 0.00000001);
+        }
+    }
+}

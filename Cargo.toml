@@ -4,6 +4,11 @@ description = "Sample Explorer"
 version = "0.1.0"
 edition = "2021"
 
+# Example of usage: cargo build --profile=release-with-debug
+[profile.release-with-debug]
+inherits = "release"
+debug = true
+
 [dependencies]
 async-std = "1.12.0"
 file_icon_provider = "0.3.1"
@@ -13,3 +18,6 @@ mime = "0.3.17"
 mime_guess = "2.0.5"
 rfd = "0.15.0"
 rodio = { git = "https://github.com/RustAudio/rodio", features = ["integer-decoder"] }
+
+[dev-dependencies]
+rstest = "0.24.0"
