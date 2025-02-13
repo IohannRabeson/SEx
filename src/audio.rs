@@ -100,7 +100,7 @@ impl Audio {
 }
 
 fn run_audio_player() -> impl Stream<Item = Message> {
-    iced::stream::channel(256, |mut output| async move {
+    iced::stream::channel(64, |mut output| async move {
         println!("Start audio subscription");
         let (command_sender, mut command_receiver) = mpsc::channel::<AudioCommand>(8);
 
