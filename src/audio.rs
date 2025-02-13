@@ -1,5 +1,9 @@
 use std::{
-    fs::File, io::BufReader, path::{Path, PathBuf}, sync::Arc, time::Duration
+    fs::File,
+    io::BufReader,
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::Duration,
 };
 
 use details::SourcePicker;
@@ -155,6 +159,7 @@ fn run_audio_player() -> impl Stream<Item = Message> {
                         // Send an empty audio buffer to clear visualizers.
                         output
                             .try_send(Message::Visualization(VisualizationMessage::AudioBuffer(
+                                0,
                                 Vec::new(),
                             )))
                             .unwrap();
@@ -242,6 +247,7 @@ mod details {
         fn submit_buffer(&mut self) {
             self.sender
                 .try_send(Message::Visualization(VisualizationMessage::AudioBuffer(
+                    self.source.channels(),
                     self.buffer.iter().map(|sample| sample.to_f32()).collect(),
                 )))
                 .unwrap();
