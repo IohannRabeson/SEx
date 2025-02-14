@@ -79,7 +79,7 @@ impl SEx {
             waveform_pane,
             PaneState::Explorer,
         ) {
-            panes.resize(explorer_waveform_split, 0.1);
+            panes.resize(explorer_waveform_split, 0.33);
         }
 
         if let Some((_, waveform_vu_meter_split)) =
