@@ -125,6 +125,7 @@ impl SEx {
             }
             Message::PaneResized(pane_grid::ResizeEvent { split, ratio }) => {
                 self.panes.resize(split, ratio);
+                return self.waveform.update_bounds();
             }
             Message::Waveform(message) => {
                 return self.waveform.update(message);
