@@ -132,8 +132,7 @@ impl Waveform {
                 }
             }
             WaveformMessage::Resized => {
-                return container::visible_bounds(WAVEFORM_CONTAINER.clone())
-                    .map(|rectangle| Message::Waveform(WaveformMessage::BoundsChanged(rectangle)))
+                return self.update_bounds()
             }
             WaveformMessage::BoundsChanged(rectangle) => {
                 self.bounds = rectangle;
@@ -166,6 +165,11 @@ impl Waveform {
                 }
             }),
         ])
+    }
+
+    pub fn update_bounds(&self) -> Task<crate::Message> {
+        container::visible_bounds(WAVEFORM_CONTAINER.clone())
+                    .map(|rectangle| Message::Waveform(WaveformMessage::BoundsChanged(rectangle)))
     }
 }
 
