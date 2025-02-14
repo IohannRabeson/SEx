@@ -1,4 +1,5 @@
 use iced::Task;
+use rodio::ChannelCount;
 
 use crate::{vu_meter::VuMeterMessage, Message};
 
@@ -6,7 +7,7 @@ pub struct Visualization {}
 
 #[derive(Debug, Clone)]
 pub enum VisualizationMessage {
-    AudioBuffer(u16, Vec<f32>),
+    AudioBuffer(ChannelCount, Vec<f32>),
 }
 
 impl Visualization {
@@ -39,7 +40,7 @@ impl Visualization {
 
         let frames_count = (buffer.len() / channels) as f32;
 
-        for i in 0 .. channels {
+        for i in 0..channels {
             rms_per_channels[i] /= frames_count;
             rms_per_channels[i] = rms_per_channels[i].sqrt();
         }

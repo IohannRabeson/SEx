@@ -41,11 +41,14 @@ impl VuMeter {
                 if rms_per_channel.len() != self.levels_per_channel.len() {
                     self.levels_per_channel.resize(rms_per_channel.len(), 0f32);
                 }
-                
-                for (rms, level) in rms_per_channel.into_iter().zip(self.levels_per_channel.iter_mut()) {
+
+                for (rms, level) in rms_per_channel
+                    .into_iter()
+                    .zip(self.levels_per_channel.iter_mut())
+                {
                     let db = 20.0 * rms.max(f32::EPSILON).log10();
 
-                    *level = ((db + 60.0) / 60.0).clamp(0.0, 1.0);    
+                    *level = ((db + 60.0) / 60.0).clamp(0.0, 1.0);
                 }
             }
         }
@@ -77,7 +80,7 @@ impl canvas::Program<Message> for VuMeter {
                     Size::new(width, height),
                     theme.palette().primary,
                 );
-            }            
+            }
         });
 
         vec![geometry]
