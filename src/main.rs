@@ -11,6 +11,7 @@ use iced::{
 use icon_provider::IconProvider;
 use rfd::AsyncFileDialog;
 use search::{Search, SearchMessage};
+use vectorscope::Vectorscope;
 use visualization::{Visualization, VisualizationMessage};
 use vu_meter::{VuMeter, VuMeterMessage};
 use waveform::{Waveform, WaveformMessage};
@@ -23,6 +24,7 @@ mod ui;
 mod visualization;
 mod vu_meter;
 mod waveform;
+mod vectorscope;
 
 fn main() -> iced::Result {
     iced::application("SEx - Sample Explorer", SEx::update, SEx::view)
@@ -40,6 +42,7 @@ enum Message {
     Waveform(WaveformMessage),
     Audio(AudioMessage),
     VuMeter(VuMeterMessage),
+    Vectorscope(vectorscope::Message),
     Visualization(VisualizationMessage),
     PaneResized(pane_grid::ResizeEvent),
     /// Send this message to show the waveform of a file and play it using Task::done.
@@ -56,6 +59,7 @@ enum PaneState {
     Explorer,
     Waveform,
     VuMeter,
+    Vectorscope,
 }
 
 struct SEx {
@@ -68,25 +72,29 @@ struct SEx {
     vu_meter: VuMeter,
     icon_provider: IconProvider,
     visualization: Visualization,
+    vectorscope: Vectorscope,
 }
 
 impl SEx {
     fn new() -> (Self, Task<Message>) {
         let (mut panes, waveform_pane) = pane_grid::State::new(PaneState::Waveform);
 
-        if let Some((_, explorer_waveform_split)) = panes.split(
+        let (_, explorer_waveform_split) = panes.split(
             pane_grid::Axis::Horizontal,
             waveform_pane,
             PaneState::Explorer,
-        ) {
-            panes.resize(explorer_waveform_split, 0.33);
-        }
+        ).unwrap();
+        panes.resize(explorer_waveform_split, 0.1);
 
-        if let Some((_, waveform_vu_meter_split)) =
-            panes.split(pane_grid::Axis::Vertical, waveform_pane, PaneState::VuMeter)
-        {
-            panes.resize(waveform_vu_meter_split, 0.95);
-        }
+
+        let (vectorscope_pane, vectorscope_split) = panes.split(pane_grid::Axis::Vertical, waveform_pane, PaneState::Vectorscope).unwrap();
+
+        panes.resize(vectorscope_split, 0.9);
+
+
+        let (_, waveform_vu_meter_split) = panes.split(pane_grid::Axis::Vertical, vectorscope_pane, PaneState::VuMeter).unwrap();
+
+        panes.resize(waveform_vu_meter_split, 0.8);
 
         (
             Self {
@@ -99,6 +107,7 @@ impl SEx {
                 icon_provider: IconProvider::default(),
                 vu_meter: VuMeter::new(),
                 visualization: Visualization::new(),
+                vectorscope: Vectorscope::new(),
             },
             Task::perform(select_existing_directory(), Message::OpenDirectory),
         )
@@ -136,6 +145,9 @@ impl SEx {
             Message::VuMeter(message) => {
                 self.vu_meter.update(message);
             }
+            Message::Vectorscope(message) => {
+                self.vectorscope.update(message);
+            }
             Message::SelectFile(Some(path)) => {
                 if path.is_file() && is_file_contains_audio(&path) {
                     self.audio.play(&path);
@@ -168,6 +180,7 @@ impl SEx {
             },
             PaneState::Waveform => self.waveform.view().into(),
             PaneState::VuMeter => self.vu_meter.view().into(),
+            PaneState::Vectorscope => self.vectorscope.view().into(),
         });
 
         pane_grid

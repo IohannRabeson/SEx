@@ -1,7 +1,7 @@
 use iced::Task;
 use rodio::ChannelCount;
 
-use crate::{vu_meter::VuMeterMessage, Message};
+use crate::{vectorscope, vu_meter::VuMeterMessage, Message};
 
 pub struct Visualization {}
 
@@ -19,13 +19,17 @@ impl Visualization {
         match message {
             VisualizationMessage::AudioBuffer(channels, samples) => {
                 let rms = Self::compute_rms(channels, &samples);
+                let points = Self::vectorscope(channels, &samples);
 
-                Task::done(Message::VuMeter(VuMeterMessage::Rms(rms)))
+                Task::batch([
+                    Task::done(Message::VuMeter(VuMeterMessage::Rms(rms))),
+                    Task::done(Message::Vectorscope(vectorscope::Message::Points(points)))
+                ])
             }
         }
     }
 
-    fn compute_rms(channels: u16, buffer: &[f32]) -> Vec<f32> {
+    fn compute_rms(channels: ChannelCount, buffer: &[f32]) -> Vec<f32> {
         let channels = channels as usize;
 
         if buffer.is_empty() || channels == 0 {
@@ -46,6 +50,34 @@ impl Visualization {
         }
 
         rms_per_channels
+    }
+    
+    fn vectorscope(channels: ChannelCount, samples: &[f32]) -> Vec<(f32, f32)> {
+        if channels == 0 || samples.len() == 0 {
+            return Vec::new()
+        }
+        
+        let channels = channels as usize;
+        let mut result = Vec::with_capacity(samples.len() / channels);
+
+        match channels {
+            1 => {
+                for sample in samples {
+                    result.push((*sample, *sample));
+                }
+            }
+            2 => {
+                for i in (0..samples.len()).step_by(2)  {
+                    let left = samples[i];
+                    let right = samples[i + 1];
+
+                    result.push((left, right));
+                }
+            }
+            _ => (),
+        }
+
+        result
     }
 }
 
