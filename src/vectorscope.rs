@@ -1,5 +1,7 @@
 use iced::{mouse, widget::{canvas::{self, Fill, Frame, Path, Stroke}, Canvas}, Element, Point, Renderer, Theme};
 
+use crate::ui::AXIS_COLOR;
+
 pub struct Vectorscope {
     points: Vec<(f32, f32)>
 }
@@ -44,6 +46,14 @@ impl canvas::Program<crate::Message> for Vectorscope {
 
         let center_x = bounds.width / 2.0;
         let center_y = bounds.height / 2.0;
+
+        let left_line = Path::line(Point::new(0.0, 0.0), Point::new(0.0, bounds.size().height));
+        let right_line = Path::line(Point::new(bounds.width, 0.0), Point::new(bounds.width, bounds.size().height));
+        let stroke = Stroke::default().with_color(AXIS_COLOR).with_width(3.0);
+
+        frame.stroke(&left_line, stroke);
+        frame.stroke(&right_line, stroke);
+
         let scale = bounds.width.min(bounds.height) / 2.0; // Scale factor
         let fill = Fill::from(theme.palette().primary);
 
