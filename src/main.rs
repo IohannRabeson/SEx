@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
-use audio::{Audio, AudioMessage};
-use file_explorer::{FileExplorer, FileExplorerMessage, NewEntry};
+use audio::Audio;
+use file_explorer::{FileExplorer, NewEntry};
 use iced::{
     futures::StreamExt,
     keyboard,
@@ -10,21 +10,21 @@ use iced::{
 };
 use icon_provider::IconProvider;
 use rfd::AsyncFileDialog;
-use search::{Search, SearchMessage};
+use search::Search;
 use vectorscope::Vectorscope;
-use visualization::{Visualization, VisualizationMessage};
-use vu_meter::{VuMeter, VuMeterMessage};
-use waveform::{Waveform, WaveformMessage};
+use visualization::Visualization;
+use vu_meter::VuMeter;
+use waveform::Waveform;
 
 mod audio;
 mod file_explorer;
 mod icon_provider;
 mod search;
 mod ui;
+mod vectorscope;
 mod visualization;
 mod vu_meter;
 mod waveform;
-mod vectorscope;
 
 fn main() -> iced::Result {
     iced::application("SEx - Sample Explorer", SEx::update, SEx::view)
@@ -37,13 +37,13 @@ fn main() -> iced::Result {
 #[derive(Debug, Clone)]
 enum Message {
     OpenDirectory(Option<PathBuf>),
-    FileExplorer(FileExplorerMessage),
-    Search(SearchMessage),
-    Waveform(WaveformMessage),
-    Audio(AudioMessage),
-    VuMeter(VuMeterMessage),
+    FileExplorer(file_explorer::Message),
+    Search(search::Message),
+    Waveform(waveform::Message),
+    Audio(audio::Message),
+    VuMeter(vu_meter::Message),
     Vectorscope(vectorscope::Message),
-    Visualization(VisualizationMessage),
+    Visualization(visualization::Message),
     PaneResized(pane_grid::ResizeEvent),
     /// Send this message to show the waveform of a file and play it using Task::done.
     /// Send SelectFile(None) to clear the waveform and stop playing audio.
@@ -79,18 +79,32 @@ impl SEx {
     fn new() -> (Self, Task<Message>) {
         let (mut panes, waveform_pane) = pane_grid::State::new(PaneState::Waveform);
 
-        let (_, explorer_waveform_split) = panes.split(
-            pane_grid::Axis::Horizontal,
-            waveform_pane,
-            PaneState::Explorer,
-        ).unwrap();
+        let (_, explorer_waveform_split) = panes
+            .split(
+                pane_grid::Axis::Horizontal,
+                waveform_pane,
+                PaneState::Explorer,
+            )
+            .unwrap();
         panes.resize(explorer_waveform_split, 0.33);
 
-        let (vectorscope_pane, vectorscope_split) = panes.split(pane_grid::Axis::Vertical, waveform_pane, PaneState::Vectorscope).unwrap();
+        let (vectorscope_pane, vectorscope_split) = panes
+            .split(
+                pane_grid::Axis::Vertical,
+                waveform_pane,
+                PaneState::Vectorscope,
+            )
+            .unwrap();
 
         panes.resize(vectorscope_split, 0.6877);
 
-        let (_, waveform_vu_meter_split) = panes.split(pane_grid::Axis::Vertical, vectorscope_pane, PaneState::VuMeter).unwrap();
+        let (_, waveform_vu_meter_split) = panes
+            .split(
+                pane_grid::Axis::Vertical,
+                vectorscope_pane,
+                PaneState::VuMeter,
+            )
+            .unwrap();
 
         panes.resize(waveform_vu_meter_split, 0.8);
 
@@ -192,13 +206,13 @@ impl SEx {
         Subscription::batch([
             keyboard::on_key_press(|key, _modifiers| match key {
                 keyboard::Key::Named(keyboard::key::Named::ArrowDown) => {
-                    Some(Message::FileExplorer(FileExplorerMessage::SelectNext))
+                    Some(Message::FileExplorer(file_explorer::Message::SelectNext))
                 }
-                keyboard::Key::Named(keyboard::key::Named::ArrowUp) => {
-                    Some(Message::FileExplorer(FileExplorerMessage::SelectPrevious))
-                }
+                keyboard::Key::Named(keyboard::key::Named::ArrowUp) => Some(Message::FileExplorer(
+                    file_explorer::Message::SelectPrevious,
+                )),
                 keyboard::Key::Named(keyboard::key::Named::Enter) => Some(Message::FileExplorer(
-                    FileExplorerMessage::ExpandCollapseCurrent,
+                    file_explorer::Message::ExpandCollapseCurrent,
                 )),
                 _ => None,
             }),

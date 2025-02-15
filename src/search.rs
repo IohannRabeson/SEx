@@ -10,10 +10,10 @@ use iced::{
 };
 use std::path::PathBuf;
 
-use crate::{icon_provider::IconProvider, is_file_contains_audio, ui, Message, View};
+use crate::{icon_provider::IconProvider, is_file_contains_audio, ui, View};
 
 #[derive(Debug, Clone)]
-pub enum SearchMessage {
+pub enum Message {
     Initialized(Sender<SearchCommand>),
     SearchTextChanged(String),
     SearchStarted,
@@ -48,14 +48,14 @@ impl Search {
         self.root_path = path;
     }
 
-    pub fn view_input(&self) -> Element<Message> {
+    pub fn view_input(&self) -> Element<crate::Message> {
         text_input("Search", &self.input)
-            .on_input(|text| Message::Search(SearchMessage::SearchTextChanged(text)))
+            .on_input(|text| crate::Message::Search(Message::SearchTextChanged(text)))
             .size(14u32)
             .into()
     }
 
-    pub fn view_results(&self) -> Element<Message> {
+    pub fn view_results(&self) -> Element<crate::Message> {
         let mut main_column = Column::new();
 
         for (index, (path, icon)) in self.results.iter().enumerate() {
@@ -64,7 +64,7 @@ impl Search {
                 .is_some_and(|selected_index| selected_index == index);
             let entry = ui::file_entry(
                 path.display(),
-                Message::Search(SearchMessage::Selected(Some(index))),
+                crate::Message::Search(Message::Selected(Some(index))),
                 icon.clone(),
                 selected,
             );
@@ -77,16 +77,16 @@ impl Search {
 
     pub fn update(
         &mut self,
-        message: SearchMessage,
+        message: Message,
         view: &mut View,
         icon_provider: &IconProvider,
-    ) -> Task<Message> {
+    ) -> Task<crate::Message> {
         match message {
-            SearchMessage::Initialized(command_sender) => {
+            Message::Initialized(command_sender) => {
                 self.command_sender = Some(command_sender);
                 println!("Search initialized");
             }
-            SearchMessage::SearchTextChanged(text) => {
+            Message::SearchTextChanged(text) => {
                 self.input = text.clone();
                 self.results.clear();
 
@@ -106,28 +106,28 @@ impl Search {
                     *view = View::Search;
                 };
             }
-            SearchMessage::FoundResults(results) => {
+            Message::FoundResults(results) => {
                 self.results.extend(results.into_iter().map(|path| {
                     let icon = icon_provider.icon(&path).ok();
 
                     (path, icon)
                 }));
             }
-            SearchMessage::SearchStarted => {
+            Message::SearchStarted => {
                 println!("Search started");
                 self.results.clear();
                 *view = View::Search;
             }
-            SearchMessage::SearchFinished => {
+            Message::SearchFinished => {
                 println!("Search finished");
             }
-            SearchMessage::ClearResults => {
+            Message::ClearResults => {
                 self.results.clear();
             }
-            SearchMessage::Selected(selected) => {
+            Message::Selected(selected) => {
                 self.selected = selected;
 
-                return Task::done(Message::SelectFile(
+                return Task::done(crate::Message::SelectFile(
                     self.selected
                         .map(|selected| self.results[selected].0.clone()),
                 ));
@@ -137,8 +137,8 @@ impl Search {
         Task::none()
     }
 
-    pub fn subscription(&self) -> Subscription<Message> {
-        Subscription::run(search_new).map(Message::Search)
+    pub fn subscription(&self) -> Subscription<crate::Message> {
+        Subscription::run(search_new).map(crate::Message::Search)
     }
 }
 
@@ -203,13 +203,13 @@ enum SearchState {
     Idle,
     Search(String, Vec<PathBuf>, SearchOptions),
 }
-fn search_new() -> impl Stream<Item = SearchMessage> {
+fn search_new() -> impl Stream<Item = Message> {
     iced::stream::channel(20, |mut output| async move {
         let (command_sender, mut command_receiver) = mpsc::channel::<SearchCommand>(16);
         let mut state = SearchState::Idle;
 
         output
-            .send(SearchMessage::Initialized(command_sender))
+            .send(Message::Initialized(command_sender))
             .await
             .unwrap();
 
@@ -231,25 +231,22 @@ fn search_new() -> impl Stream<Item = SearchMessage> {
 
                                 state =
                                     SearchState::Search(searched, vec![root_directory], options);
-                                output.send(SearchMessage::SearchStarted).await.unwrap();
+                                output.send(Message::SearchStarted).await.unwrap();
                             }
                             SearchCommand::Clear => {
                                 state = SearchState::Idle;
-                                output.send(SearchMessage::ClearResults).await.unwrap();
+                                output.send(Message::ClearResults).await.unwrap();
                                 println!("Search cleared");
                             }
                         }
                     } else if directories_to_visit.is_empty() {
-                        output.send(SearchMessage::SearchFinished).await.unwrap();
+                        output.send(Message::SearchFinished).await.unwrap();
                         state = SearchState::Idle;
                     } else {
                         let results =
                             search_filesystem(directories_to_visit, searched, options).await;
 
-                        output
-                            .send(SearchMessage::FoundResults(results))
-                            .await
-                            .unwrap();
+                        output.send(Message::FoundResults(results)).await.unwrap();
                     }
                 }
             }

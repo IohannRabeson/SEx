@@ -1,5 +1,7 @@
 use iced::{
-    alignment::Vertical, widget::{container, image, text::Wrapping, MouseArea, Row}, Color, Element, Padding, Theme
+    alignment::Vertical,
+    widget::{container, image, text::Wrapping, MouseArea, Row},
+    Color, Element, Padding, Theme,
 };
 
 use crate::Message;

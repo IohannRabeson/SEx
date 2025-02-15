@@ -16,10 +16,10 @@ use iced::{
 };
 use rodio::{mixer::Mixer, OutputStream, Source};
 
-use crate::{visualization::VisualizationMessage, waveform::WaveformMessage, Message};
+use crate::{visualization, waveform};
 
 #[derive(Debug, Clone)]
-pub enum AudioMessage {
+pub enum Message {
     Initialize(Sender<AudioCommand>),
     QueryPosition,
     SetPosition(f32),
@@ -51,16 +51,16 @@ impl Audio {
         }
     }
 
-    pub fn update(&mut self, message: AudioMessage) -> Task<Message> {
+    pub fn update(&mut self, message: Message) -> Task<crate::Message> {
         match message {
-            AudioMessage::Initialize(command_sender) => {
+            Message::Initialize(command_sender) => {
                 self.command_sender = Some(command_sender);
                 self.send_command(AudioCommand::Initialize(self.mixer.clone()));
             }
-            AudioMessage::QueryPosition => {
+            Message::QueryPosition => {
                 self.send_command_if_possible(AudioCommand::QueryPosition);
             }
-            AudioMessage::SetPosition(position) => {
+            Message::SetPosition(position) => {
                 self.send_command_if_possible(AudioCommand::SetPosition(position));
             }
         }
@@ -68,13 +68,13 @@ impl Audio {
         Task::none()
     }
 
-    pub fn subscription(&self) -> Subscription<Message> {
+    pub fn subscription(&self) -> Subscription<crate::Message> {
         const UI_FRAME_DURATION: Duration = Duration::from_millis(1000 / 60);
 
         Subscription::batch([
             Subscription::run(run_audio_player),
             iced::time::every(UI_FRAME_DURATION)
-                .map(|_| Message::Audio(AudioMessage::QueryPosition)),
+                .map(|_| crate::Message::Audio(Message::QueryPosition)),
         ])
     }
 
@@ -103,7 +103,7 @@ impl Audio {
     }
 }
 
-fn run_audio_player() -> impl Stream<Item = Message> {
+fn run_audio_player() -> impl Stream<Item = crate::Message> {
     iced::stream::channel(64, |mut output| async move {
         println!("Start audio subscription");
         let (command_sender, mut command_receiver) = mpsc::channel::<AudioCommand>(8);
@@ -112,7 +112,7 @@ fn run_audio_player() -> impl Stream<Item = Message> {
         let mut mixer = None;
 
         output
-            .send(Message::Audio(AudioMessage::Initialize(command_sender)))
+            .send(crate::Message::Audio(Message::Initialize(command_sender)))
             .await
             .unwrap();
 
@@ -158,10 +158,9 @@ fn run_audio_player() -> impl Stream<Item = Message> {
 
                         // Send an empty audio buffer to clear visualizers.
                         output
-                            .try_send(Message::Visualization(VisualizationMessage::AudioBuffer(
-                                0,
-                                Vec::new(),
-                            )))
+                            .try_send(crate::Message::Visualization(
+                                visualization::Message::AudioBuffer(0, Vec::new()),
+                            ))
                             .unwrap();
                     }
                 }
@@ -171,7 +170,9 @@ fn run_audio_player() -> impl Stream<Item = Message> {
                             let position = sink.get_pos().as_secs_f32() / duration.as_secs_f32();
 
                             output
-                                .send(Message::Waveform(WaveformMessage::PlayPosition(position)))
+                                .send(crate::Message::Waveform(waveform::Message::PlayPosition(
+                                    position,
+                                )))
                                 .await
                                 .unwrap();
                         }
@@ -208,7 +209,7 @@ mod details {
     use iced::futures::channel::mpsc::Sender;
     use rodio::{source::SeekError, Sample};
 
-    use crate::{visualization::VisualizationMessage, Message};
+    use crate::{visualization, Message};
 
     pub(crate) struct SourcePicker<S>
     where
@@ -246,7 +247,7 @@ mod details {
 
         fn submit_buffer(&mut self) {
             self.sender
-                .try_send(Message::Visualization(VisualizationMessage::AudioBuffer(
+                .try_send(Message::Visualization(visualization::Message::AudioBuffer(
                     self.source.channels(),
                     self.buffer.iter().map(|sample| sample.to_f32()).collect(),
                 )))

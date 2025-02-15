@@ -7,10 +7,8 @@ use iced::{
     Element, Length, Point, Rectangle, Renderer, Size, Theme,
 };
 
-use crate::Message;
-
 #[derive(Debug, Clone)]
-pub enum VuMeterMessage {
+pub enum Message {
     /// RMS per channel
     Rms(Vec<f32>),
 }
@@ -28,16 +26,16 @@ impl VuMeter {
         }
     }
 
-    pub fn view(&self) -> Element<Message> {
+    pub fn view(&self) -> Element<crate::Message> {
         Canvas::new(self)
             .width(Length::Fill)
             .height(Length::Fill)
             .into()
     }
 
-    pub fn update(&mut self, message: VuMeterMessage) {
+    pub fn update(&mut self, message: Message) {
         match message {
-            VuMeterMessage::Rms(rms_per_channel) => {
+            Message::Rms(rms_per_channel) => {
                 if rms_per_channel.len() != self.levels_per_channel.len() {
                     self.levels_per_channel.resize(rms_per_channel.len(), 0f32);
                 }
@@ -57,7 +55,7 @@ impl VuMeter {
     }
 }
 
-impl canvas::Program<Message> for VuMeter {
+impl canvas::Program<crate::Message> for VuMeter {
     type State = ();
 
     fn draw(

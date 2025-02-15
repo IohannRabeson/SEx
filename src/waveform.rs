@@ -19,8 +19,6 @@ use iced::{
 };
 use rodio::{Decoder, Source};
 
-use crate::{audio::AudioMessage, Message};
-
 pub enum WaveformCommand {
     LoadFile {
         /// Path to the file to load
@@ -35,7 +33,7 @@ pub enum WaveformCommand {
 }
 
 #[derive(Debug, Clone)]
-pub enum WaveformMessage {
+pub enum Message {
     Initialized(mpsc::Sender<WaveformCommand>),
     LoadingStarted(usize),
     LoadingFinished,
@@ -93,23 +91,23 @@ impl Waveform {
         self.samples.clear();
     }
 
-    pub fn update(&mut self, message: WaveformMessage) -> Task<Message> {
+    pub fn update(&mut self, message: Message) -> Task<crate::Message> {
         match message {
-            WaveformMessage::Initialized(command_sender) => {
+            Message::Initialized(command_sender) => {
                 println!("Waveform initialized");
                 self.command_sender = Some(command_sender);
             }
-            WaveformMessage::LoadingStarted(samples_count) => {
+            Message::LoadingStarted(samples_count) => {
                 self.samples.clear();
                 self.samples.reserve(samples_count);
                 self.total_samples = samples_count;
 
                 println!("Loading started: {samples_count}");
             }
-            WaveformMessage::LoadingFinished => {
+            Message::LoadingFinished => {
                 println!("Loading finished");
             }
-            WaveformMessage::SamplesReady {
+            Message::SamplesReady {
                 path: mut samples,
                 generation,
             } => {
@@ -117,24 +115,24 @@ impl Waveform {
                     self.samples.append(&mut samples);
                 }
             }
-            WaveformMessage::Clear => {
+            Message::Clear => {
                 self.samples.clear();
                 self.total_samples = 0;
             }
-            WaveformMessage::PlayPosition(position) => {
+            Message::PlayPosition(position) => {
                 self.play_position = position;
             }
-            WaveformMessage::Click(point) => {
+            Message::Click(point) => {
                 if let Some(bounds) = self.bounds.as_ref() {
                     let position = point.x / bounds.width;
 
-                    return Task::done(Message::Audio(AudioMessage::SetPosition(position)));
+                    return Task::done(crate::Message::Audio(audio::Message::SetPosition(
+                        position,
+                    )));
                 }
             }
-            WaveformMessage::Resized => {
-                return self.update_bounds()
-            }
-            WaveformMessage::BoundsChanged(rectangle) => {
+            Message::Resized => return self.update_bounds(),
+            Message::BoundsChanged(rectangle) => {
                 self.bounds = rectangle;
             }
         }
@@ -144,22 +142,22 @@ impl Waveform {
         Task::none()
     }
 
-    pub fn view(&self) -> Element<Message> {
+    pub fn view(&self) -> Element<crate::Message> {
         MouseArea::new(
             container(Canvas::new(self).width(Length::Fill).height(Length::Fill))
                 .id(WAVEFORM_CONTAINER.clone()),
         )
-        .on_press_position(|position| Message::Waveform(WaveformMessage::Click(position)))
+        .on_press_position(|position| crate::Message::Waveform(Message::Click(position)))
         .into()
     }
 
-    pub fn subscription(&self) -> Subscription<Message> {
+    pub fn subscription(&self) -> Subscription<crate::Message> {
         Subscription::batch([
-            Subscription::run(waveform_loading).map(Message::Waveform),
-            event::listen_with(|event, _status, _id| -> Option<Message> {
+            Subscription::run(waveform_loading).map(crate::Message::Waveform),
+            event::listen_with(|event, _status, _id| -> Option<crate::Message> {
                 match event {
                     Event::Window(window::Event::Resized { .. }) => {
-                        Some(Message::Waveform(WaveformMessage::Resized))
+                        Some(crate::Message::Waveform(Message::Resized))
                     }
                     _ => None,
                 }
@@ -169,16 +167,16 @@ impl Waveform {
 
     pub fn update_bounds(&self) -> Task<crate::Message> {
         container::visible_bounds(WAVEFORM_CONTAINER.clone())
-                    .map(|rectangle| Message::Waveform(WaveformMessage::BoundsChanged(rectangle)))
+            .map(|rectangle| crate::Message::Waveform(Message::BoundsChanged(rectangle)))
     }
 }
 
-fn waveform_loading() -> impl Stream<Item = WaveformMessage> {
+fn waveform_loading() -> impl Stream<Item = Message> {
     iced::stream::channel(8, |mut output| async move {
         let (command_sender, mut command_receiver) = mpsc::channel::<WaveformCommand>(8);
 
         output
-            .send(WaveformMessage::Initialized(command_sender))
+            .send(Message::Initialized(command_sender))
             .await
             .unwrap();
 
@@ -234,7 +232,7 @@ fn waveform_loading() -> impl Stream<Item = WaveformMessage> {
 
                         if buffer.as_ref().unwrap().len() == buffer_size {
                             output
-                                .send(WaveformMessage::SamplesReady {
+                                .send(Message::SamplesReady {
                                     path: buffer.take().unwrap(),
                                     generation,
                                 })
@@ -247,7 +245,7 @@ fn waveform_loading() -> impl Stream<Item = WaveformMessage> {
 
                     if !buffer.as_ref().unwrap().is_empty() {
                         output
-                            .send(WaveformMessage::SamplesReady {
+                            .send(Message::SamplesReady {
                                 path: buffer.take().unwrap(),
                                 generation,
                             })
@@ -268,7 +266,7 @@ fn waveform_loading() -> impl Stream<Item = WaveformMessage> {
                         }
                     );
 
-                    output.send(WaveformMessage::LoadingFinished).await.unwrap();
+                    output.send(Message::LoadingFinished).await.unwrap();
 
                     state = State::Idle;
                 }
@@ -277,10 +275,7 @@ fn waveform_loading() -> impl Stream<Item = WaveformMessage> {
     })
 }
 
-async fn process_command(
-    command: WaveformCommand,
-    output: &mut mpsc::Sender<WaveformMessage>,
-) -> State {
+async fn process_command(command: WaveformCommand, output: &mut mpsc::Sender<Message>) -> State {
     match command {
         WaveformCommand::LoadFile { path, generation } => {
             if let Ok(file) = File::open(path) {
@@ -294,7 +289,7 @@ async fn process_command(
                         println!("Sample rate: {}", decoder.sample_rate());
 
                         output
-                            .send(WaveformMessage::LoadingStarted(samples_count as usize))
+                            .send(Message::LoadingStarted(samples_count as usize))
                             .await
                             .unwrap();
 
@@ -308,12 +303,12 @@ async fn process_command(
                 }
             }
 
-            output.send(WaveformMessage::Clear).await.unwrap();
+            output.send(Message::Clear).await.unwrap();
 
             State::Idle
         }
         WaveformCommand::StopLoading => {
-            output.send(WaveformMessage::Clear).await.unwrap();
+            output.send(Message::Clear).await.unwrap();
 
             State::Idle
         }
@@ -331,7 +326,7 @@ fn line_color(palette: &Palette, has_samples: bool) -> Color {
     color
 }
 
-impl canvas::Program<Message> for Waveform {
+impl canvas::Program<crate::Message> for Waveform {
     type State = ();
 
     fn draw(
@@ -391,6 +386,8 @@ impl canvas::Program<Message> for Waveform {
 }
 
 use std::sync::LazyLock;
+
+use crate::audio;
 
 static WAVEFORM_CONTAINER: LazyLock<container::Id> =
     LazyLock::new(|| container::Id::new("waveform"));
