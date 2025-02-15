@@ -84,13 +84,11 @@ impl SEx {
             waveform_pane,
             PaneState::Explorer,
         ).unwrap();
-        panes.resize(explorer_waveform_split, 0.1);
-
+        panes.resize(explorer_waveform_split, 0.33);
 
         let (vectorscope_pane, vectorscope_split) = panes.split(pane_grid::Axis::Vertical, waveform_pane, PaneState::Vectorscope).unwrap();
 
-        panes.resize(vectorscope_split, 0.9);
-
+        panes.resize(vectorscope_split, 0.6877);
 
         let (_, waveform_vu_meter_split) = panes.split(pane_grid::Axis::Vertical, vectorscope_pane, PaneState::VuMeter).unwrap();
 
@@ -133,6 +131,7 @@ impl SEx {
                     .update(message, &mut self.view, &self.icon_provider);
             }
             Message::PaneResized(pane_grid::ResizeEvent { split, ratio }) => {
+                println!("pane resized: {}", ratio);
                 self.panes.resize(split, ratio);
                 return self.waveform.update_bounds();
             }
