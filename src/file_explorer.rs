@@ -11,7 +11,7 @@ use iced::{
     Element, Length, Task,
 };
 
-use crate::{icon_provider::IconProvider, load_directory_entries, ui, Message};
+use crate::{icon_provider::IconProvider, load_directory_entries, ui};
 
 #[derive(Default)]
 pub struct FileExplorer {
@@ -19,7 +19,7 @@ pub struct FileExplorer {
 }
 
 impl FileExplorer {
-    pub fn set_root_path(&mut self, path: impl AsRef<Path>) -> Task<Message> {
+    pub fn set_root_path(&mut self, path: impl AsRef<Path>) -> Task<crate::Message> {
         self.model = Some(FileExplorerModel::new(
             path.as_ref().to_string_lossy().to_string(),
         ));
@@ -29,48 +29,48 @@ impl FileExplorer {
         Task::perform(
             load_directory_entries(path.as_ref().to_path_buf()),
             move |entries| {
-                Message::FileExplorer(FileExplorerMessage::ChildrenLoaded(root, entries))
+                crate::Message::FileExplorer(Message::ChildrenLoaded(root, entries))
             },
         )
     }
 
-    pub fn view(&self) -> Element<Message> {
+    pub fn view(&self) -> Element<crate::Message> {
         self::view(self.model.as_ref())
     }
 
     pub fn update(
         &mut self,
-        message: FileExplorerMessage,
+        message: Message,
         icon_provider: &IconProvider,
-    ) -> Task<Message> {
+    ) -> Task<crate::Message> {
         match message {
-            FileExplorerMessage::RequestLoad(id, path) => {
+            Message::RequestLoad(id, path) => {
                 return Task::perform(load_directory_entries(path), move |entries| {
-                    Message::FileExplorer(FileExplorerMessage::ChildrenLoaded(id, entries))
+                    crate::Message::FileExplorer(Message::ChildrenLoaded(id, entries))
                 });
             }
-            FileExplorerMessage::ChildrenLoaded(parent_id, new_entries) => {
+            Message::ChildrenLoaded(parent_id, new_entries) => {
                 if let Some(model) = self.model.as_mut() {
                     model.add(parent_id, new_entries, icon_provider);
                     model.update_linear_index();
                 }
             }
-            FileExplorerMessage::Collapse(id) => {
+            Message::Collapse(id) => {
                 if let Some(model) = self.model.as_mut() {
                     model.set_status(id, ContainerStatus::Collapsed);
                     model.update_linear_index();
                 }
             }
-            FileExplorerMessage::Expand(id) => {
+            Message::Expand(id) => {
                 if let Some(model) = self.model.as_mut() {
                     model.set_status(id, ContainerStatus::Expanded);
                     model.update_linear_index();
                 }
             }
-            FileExplorerMessage::Select(id) => {
+            Message::Select(id) => {
                 return self.set_selection(id);
             }
-            FileExplorerMessage::SelectNext => {
+            Message::SelectNext => {
                 if let Some(model) = self.model.as_mut() {
                     if let Some(current_id) = model.selection() {
                         if let Some(id) = model.next(current_id) {
@@ -79,7 +79,7 @@ impl FileExplorer {
                     }
                 }
             }
-            FileExplorerMessage::SelectPrevious => {
+            Message::SelectPrevious => {
                 if let Some(model) = self.model.as_mut() {
                     if let Some(current_id) = model.selection() {
                         if let Some(id) = model.previous(current_id) {
@@ -88,7 +88,7 @@ impl FileExplorer {
                     }
                 }
             }
-            FileExplorerMessage::ExpandCollapseCurrent => {
+            Message::ExpandCollapseCurrent => {
                 if let Some(model) = self.model.as_mut() {
                     if let Some(current_id) = model.selection() {
                         let mut task = model.expand_collapse(current_id);
@@ -106,11 +106,11 @@ impl FileExplorer {
         Task::none()
     }
 
-    fn set_selection(&mut self, id: Option<NodeId>) -> Task<Message> {
+    fn set_selection(&mut self, id: Option<NodeId>) -> Task<crate::Message> {
         if let Some(model) = self.model.as_mut() {
             model.set_selection(id);
 
-            return Task::done(Message::SelectFile(id.map(|id| model.path(id))));
+            return Task::done(crate::Message::SelectFile(id.map(|id| model.path(id))));
         }
 
         Task::none()
@@ -118,7 +118,7 @@ impl FileExplorer {
 }
 
 #[derive(Debug, Clone)]
-pub enum FileExplorerMessage {
+pub enum Message {
     RequestLoad(NodeId, PathBuf),
     ChildrenLoaded(NodeId, Vec<NewEntry>),
     Collapse(NodeId),
@@ -152,7 +152,7 @@ pub enum ContainerStatus {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct NodeId(usize);
 
-fn view(tree: Option<&FileExplorerModel>) -> Element<Message> {
+fn view(tree: Option<&FileExplorerModel>) -> Element<crate::Message> {
     const DEPTH_OFFSET: f32 = 20f32;
 
     let mut main_column = Column::new();
@@ -179,14 +179,14 @@ fn view(tree: Option<&FileExplorerModel>) -> Element<Message> {
             .width(Length::Fill)
             .height(Length::Fill),
     )
-    .on_press(Message::FileExplorer(FileExplorerMessage::Select(None)))
+    .on_press(crate::Message::FileExplorer(Message::Select(None)))
     .into()
 }
 
-fn make_selectable_part(model: &FileExplorerModel, id: NodeId) -> Element<Message> {
+fn make_selectable_part(model: &FileExplorerModel, id: NodeId) -> Element<crate::Message> {
     let path_component = model.path_component(id).unwrap();
     let is_selected = model.selection.is_some_and(|selection| selection == id);
-    let select_message = Message::FileExplorer(FileExplorerMessage::Select(Some(id)));
+    let select_message = crate::Message::FileExplorer(Message::Select(Some(id)));
     let icon = model.icon(id);
 
     ui::file_entry(path_component, select_message, icon, is_selected)
@@ -196,7 +196,7 @@ fn show_children_control(
     tree: &FileExplorerModel,
     id: NodeId,
     status: ContainerStatus,
-) -> Element<Message> {
+) -> Element<crate::Message> {
     const COLLAPSED: &str = "▶";
     const EXPANDED: &str = "▼";
 
@@ -205,16 +205,16 @@ fn show_children_control(
             let path = tree.path(id);
 
             MouseArea::new(text(COLLAPSED))
-                .on_press(Message::FileExplorer(FileExplorerMessage::RequestLoad(
+                .on_press(crate::Message::FileExplorer(Message::RequestLoad(
                     id, path,
                 )))
                 .into()
         }
         ContainerStatus::Expanded => MouseArea::new(text(EXPANDED))
-            .on_press(Message::FileExplorer(FileExplorerMessage::Collapse(id)))
+            .on_press(crate::Message::FileExplorer(Message::Collapse(id)))
             .into(),
         ContainerStatus::Collapsed => MouseArea::new(text(COLLAPSED))
-            .on_press(Message::FileExplorer(FileExplorerMessage::Expand(id)))
+            .on_press(crate::Message::FileExplorer(Message::Expand(id)))
             .into(),
         ContainerStatus::Empty => Space::new(Length::Shrink, Length::Shrink).into(),
     }
@@ -530,18 +530,18 @@ impl FileExplorerModel {
         Some(node.borrow().status())
     }
 
-    pub fn expand_collapse(&self, id: NodeId) -> Option<Task<Message>> {
+    pub fn expand_collapse(&self, id: NodeId) -> Option<Task<crate::Message>> {
         if let Some(node) = self.index.get(&id) {
             if let Node::Directory { status, .. } = node.borrow().deref() {
                 match status {
                     ContainerStatus::Expanded => {
-                        return Some(Task::done(Message::FileExplorer(
-                            FileExplorerMessage::Collapse(id),
+                        return Some(Task::done(crate::Message::FileExplorer(
+                            Message::Collapse(id),
                         )))
                     }
                     ContainerStatus::Collapsed => {
-                        return Some(Task::done(Message::FileExplorer(
-                            FileExplorerMessage::Expand(id),
+                        return Some(Task::done(crate::Message::FileExplorer(
+                            Message::Expand(id),
                         )))
                     }
                     ContainerStatus::NotLoaded => {
@@ -550,7 +550,7 @@ impl FileExplorerModel {
                         return Some(Task::perform(
                             load_directory_entries(path),
                             move |entries| {
-                                Message::FileExplorer(FileExplorerMessage::ChildrenLoaded(
+                                crate::Message::FileExplorer(Message::ChildrenLoaded(
                                     id, entries,
                                 ))
                             },

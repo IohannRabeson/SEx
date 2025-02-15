@@ -1,12 +1,12 @@
 use iced::Task;
 use rodio::ChannelCount;
 
-use crate::{vectorscope, vu_meter::VuMeterMessage, Message};
+use crate::{vectorscope, vu_meter};
 
 pub struct Visualization {}
 
 #[derive(Debug, Clone)]
-pub enum VisualizationMessage {
+pub enum Message {
     AudioBuffer(ChannelCount, Vec<f32>),
 }
 
@@ -15,15 +15,15 @@ impl Visualization {
         Self {}
     }
 
-    pub fn update(&mut self, message: VisualizationMessage) -> Task<Message> {
+    pub fn update(&mut self, message: Message) -> Task<crate::Message> {
         match message {
-            VisualizationMessage::AudioBuffer(channels, samples) => {
+            Message::AudioBuffer(channels, samples) => {
                 let rms = Self::compute_rms(channels, &samples);
                 let points = Self::vectorscope(channels, &samples);
 
                 Task::batch([
-                    Task::done(Message::VuMeter(VuMeterMessage::Rms(rms))),
-                    Task::done(Message::Vectorscope(vectorscope::Message::Points(points)))
+                    Task::done(crate::Message::VuMeter(vu_meter::Message::Rms(rms))),
+                    Task::done(crate::Message::Vectorscope(vectorscope::Message::Points(points)))
                 ])
             }
         }

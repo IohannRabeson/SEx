@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
-use audio::{Audio, AudioMessage};
-use file_explorer::{FileExplorer, FileExplorerMessage, NewEntry};
+use audio::Audio;
+use file_explorer::{FileExplorer, NewEntry};
 use iced::{
     futures::StreamExt,
     keyboard,
@@ -10,11 +10,11 @@ use iced::{
 };
 use icon_provider::IconProvider;
 use rfd::AsyncFileDialog;
-use search::{Search, SearchMessage};
+use search::Search;
 use vectorscope::Vectorscope;
-use visualization::{Visualization, VisualizationMessage};
-use vu_meter::{VuMeter, VuMeterMessage};
-use waveform::{Waveform, WaveformMessage};
+use visualization::Visualization;
+use vu_meter::VuMeter;
+use waveform::Waveform;
 
 mod audio;
 mod file_explorer;
@@ -37,13 +37,13 @@ fn main() -> iced::Result {
 #[derive(Debug, Clone)]
 enum Message {
     OpenDirectory(Option<PathBuf>),
-    FileExplorer(FileExplorerMessage),
-    Search(SearchMessage),
-    Waveform(WaveformMessage),
-    Audio(AudioMessage),
-    VuMeter(VuMeterMessage),
+    FileExplorer(file_explorer::Message),
+    Search(search::Message),
+    Waveform(waveform::Message),
+    Audio(audio::Message),
+    VuMeter(vu_meter::Message),
     Vectorscope(vectorscope::Message),
-    Visualization(VisualizationMessage),
+    Visualization(visualization::Message),
     PaneResized(pane_grid::ResizeEvent),
     /// Send this message to show the waveform of a file and play it using Task::done.
     /// Send SelectFile(None) to clear the waveform and stop playing audio.
@@ -192,13 +192,13 @@ impl SEx {
         Subscription::batch([
             keyboard::on_key_press(|key, _modifiers| match key {
                 keyboard::Key::Named(keyboard::key::Named::ArrowDown) => {
-                    Some(Message::FileExplorer(FileExplorerMessage::SelectNext))
+                    Some(Message::FileExplorer(file_explorer::Message::SelectNext))
                 }
                 keyboard::Key::Named(keyboard::key::Named::ArrowUp) => {
-                    Some(Message::FileExplorer(FileExplorerMessage::SelectPrevious))
+                    Some(Message::FileExplorer(file_explorer::Message::SelectPrevious))
                 }
                 keyboard::Key::Named(keyboard::key::Named::Enter) => Some(Message::FileExplorer(
-                    FileExplorerMessage::ExpandCollapseCurrent,
+                    file_explorer::Message::ExpandCollapseCurrent,
                 )),
                 _ => None,
             }),
