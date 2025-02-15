@@ -21,10 +21,10 @@ mod file_explorer;
 mod icon_provider;
 mod search;
 mod ui;
+mod vectorscope;
 mod visualization;
 mod vu_meter;
 mod waveform;
-mod vectorscope;
 
 fn main() -> iced::Result {
     iced::application("SEx - Sample Explorer", SEx::update, SEx::view)
@@ -79,18 +79,32 @@ impl SEx {
     fn new() -> (Self, Task<Message>) {
         let (mut panes, waveform_pane) = pane_grid::State::new(PaneState::Waveform);
 
-        let (_, explorer_waveform_split) = panes.split(
-            pane_grid::Axis::Horizontal,
-            waveform_pane,
-            PaneState::Explorer,
-        ).unwrap();
+        let (_, explorer_waveform_split) = panes
+            .split(
+                pane_grid::Axis::Horizontal,
+                waveform_pane,
+                PaneState::Explorer,
+            )
+            .unwrap();
         panes.resize(explorer_waveform_split, 0.33);
 
-        let (vectorscope_pane, vectorscope_split) = panes.split(pane_grid::Axis::Vertical, waveform_pane, PaneState::Vectorscope).unwrap();
+        let (vectorscope_pane, vectorscope_split) = panes
+            .split(
+                pane_grid::Axis::Vertical,
+                waveform_pane,
+                PaneState::Vectorscope,
+            )
+            .unwrap();
 
         panes.resize(vectorscope_split, 0.6877);
 
-        let (_, waveform_vu_meter_split) = panes.split(pane_grid::Axis::Vertical, vectorscope_pane, PaneState::VuMeter).unwrap();
+        let (_, waveform_vu_meter_split) = panes
+            .split(
+                pane_grid::Axis::Vertical,
+                vectorscope_pane,
+                PaneState::VuMeter,
+            )
+            .unwrap();
 
         panes.resize(waveform_vu_meter_split, 0.8);
 
@@ -194,9 +208,9 @@ impl SEx {
                 keyboard::Key::Named(keyboard::key::Named::ArrowDown) => {
                     Some(Message::FileExplorer(file_explorer::Message::SelectNext))
                 }
-                keyboard::Key::Named(keyboard::key::Named::ArrowUp) => {
-                    Some(Message::FileExplorer(file_explorer::Message::SelectPrevious))
-                }
+                keyboard::Key::Named(keyboard::key::Named::ArrowUp) => Some(Message::FileExplorer(
+                    file_explorer::Message::SelectPrevious,
+                )),
                 keyboard::Key::Named(keyboard::key::Named::Enter) => Some(Message::FileExplorer(
                     file_explorer::Message::ExpandCollapseCurrent,
                 )),

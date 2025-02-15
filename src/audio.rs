@@ -158,10 +158,9 @@ fn run_audio_player() -> impl Stream<Item = crate::Message> {
 
                         // Send an empty audio buffer to clear visualizers.
                         output
-                            .try_send(crate::Message::Visualization(visualization::Message::AudioBuffer(
-                                0,
-                                Vec::new(),
-                            )))
+                            .try_send(crate::Message::Visualization(
+                                visualization::Message::AudioBuffer(0, Vec::new()),
+                            ))
                             .unwrap();
                     }
                 }
@@ -171,7 +170,9 @@ fn run_audio_player() -> impl Stream<Item = crate::Message> {
                             let position = sink.get_pos().as_secs_f32() / duration.as_secs_f32();
 
                             output
-                                .send(crate::Message::Waveform(waveform::Message::PlayPosition(position)))
+                                .send(crate::Message::Waveform(waveform::Message::PlayPosition(
+                                    position,
+                                )))
                                 .await
                                 .unwrap();
                         }

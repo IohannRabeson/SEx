@@ -28,9 +28,7 @@ impl FileExplorer {
 
         Task::perform(
             load_directory_entries(path.as_ref().to_path_buf()),
-            move |entries| {
-                crate::Message::FileExplorer(Message::ChildrenLoaded(root, entries))
-            },
+            move |entries| crate::Message::FileExplorer(Message::ChildrenLoaded(root, entries)),
         )
     }
 
@@ -205,9 +203,7 @@ fn show_children_control(
             let path = tree.path(id);
 
             MouseArea::new(text(COLLAPSED))
-                .on_press(crate::Message::FileExplorer(Message::RequestLoad(
-                    id, path,
-                )))
+                .on_press(crate::Message::FileExplorer(Message::RequestLoad(id, path)))
                 .into()
         }
         ContainerStatus::Expanded => MouseArea::new(text(EXPANDED))
@@ -535,14 +531,14 @@ impl FileExplorerModel {
             if let Node::Directory { status, .. } = node.borrow().deref() {
                 match status {
                     ContainerStatus::Expanded => {
-                        return Some(Task::done(crate::Message::FileExplorer(
-                            Message::Collapse(id),
-                        )))
+                        return Some(Task::done(crate::Message::FileExplorer(Message::Collapse(
+                            id,
+                        ))))
                     }
                     ContainerStatus::Collapsed => {
-                        return Some(Task::done(crate::Message::FileExplorer(
-                            Message::Expand(id),
-                        )))
+                        return Some(Task::done(crate::Message::FileExplorer(Message::Expand(
+                            id,
+                        ))))
                     }
                     ContainerStatus::NotLoaded => {
                         let path = self.path(id);
@@ -550,9 +546,7 @@ impl FileExplorerModel {
                         return Some(Task::perform(
                             load_directory_entries(path),
                             move |entries| {
-                                crate::Message::FileExplorer(Message::ChildrenLoaded(
-                                    id, entries,
-                                ))
+                                crate::Message::FileExplorer(Message::ChildrenLoaded(id, entries))
                             },
                         ));
                     }

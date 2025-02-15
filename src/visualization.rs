@@ -23,7 +23,9 @@ impl Visualization {
 
                 Task::batch([
                     Task::done(crate::Message::VuMeter(vu_meter::Message::Rms(rms))),
-                    Task::done(crate::Message::Vectorscope(vectorscope::Message::Points(points)))
+                    Task::done(crate::Message::Vectorscope(vectorscope::Message::Points(
+                        points,
+                    ))),
                 ])
             }
         }
@@ -51,12 +53,12 @@ impl Visualization {
 
         rms_per_channels
     }
-    
+
     fn vectorscope(channels: ChannelCount, samples: &[f32]) -> Vec<(f32, f32)> {
         if channels == 0 || samples.len() == 0 {
-            return Vec::new()
+            return Vec::new();
         }
-        
+
         let channels = channels as usize;
         let mut result = Vec::with_capacity(samples.len() / channels);
 
@@ -67,7 +69,7 @@ impl Visualization {
                 }
             }
             2 => {
-                for i in (0..samples.len()).step_by(2)  {
+                for i in (0..samples.len()).step_by(2) {
                     let left = samples[i];
                     let right = samples[i + 1];
 

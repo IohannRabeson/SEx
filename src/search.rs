@@ -246,10 +246,7 @@ fn search_new() -> impl Stream<Item = Message> {
                         let results =
                             search_filesystem(directories_to_visit, searched, options).await;
 
-                        output
-                            .send(Message::FoundResults(results))
-                            .await
-                            .unwrap();
+                        output.send(Message::FoundResults(results)).await.unwrap();
                     }
                 }
             }

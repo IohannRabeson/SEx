@@ -126,12 +126,12 @@ impl Waveform {
                 if let Some(bounds) = self.bounds.as_ref() {
                     let position = point.x / bounds.width;
 
-                    return Task::done(crate::Message::Audio(audio::Message::SetPosition(position)));
+                    return Task::done(crate::Message::Audio(audio::Message::SetPosition(
+                        position,
+                    )));
                 }
             }
-            Message::Resized => {
-                return self.update_bounds()
-            }
+            Message::Resized => return self.update_bounds(),
             Message::BoundsChanged(rectangle) => {
                 self.bounds = rectangle;
             }
@@ -167,7 +167,7 @@ impl Waveform {
 
     pub fn update_bounds(&self) -> Task<crate::Message> {
         container::visible_bounds(WAVEFORM_CONTAINER.clone())
-                    .map(|rectangle| crate::Message::Waveform(Message::BoundsChanged(rectangle)))
+            .map(|rectangle| crate::Message::Waveform(Message::BoundsChanged(rectangle)))
     }
 }
 
@@ -275,10 +275,7 @@ fn waveform_loading() -> impl Stream<Item = Message> {
     })
 }
 
-async fn process_command(
-    command: WaveformCommand,
-    output: &mut mpsc::Sender<Message>,
-) -> State {
+async fn process_command(command: WaveformCommand, output: &mut mpsc::Sender<Message>) -> State {
     match command {
         WaveformCommand::LoadFile { path, generation } => {
             if let Ok(file) = File::open(path) {
