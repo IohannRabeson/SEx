@@ -131,7 +131,6 @@ impl SEx {
                     .update(message, &mut self.view, &self.icon_provider);
             }
             Message::PaneResized(pane_grid::ResizeEvent { split, ratio }) => {
-                println!("pane resized: {}", ratio);
                 self.panes.resize(split, ratio);
                 return self.waveform.update_bounds();
             }
