@@ -1,13 +1,12 @@
 use iced::{
     alignment::Vertical,
     widget::{container, image, text::Wrapping, MouseArea, Row},
-    Color, Element, Padding, Theme,
+    Element, Padding, Theme,
 };
 
 use crate::Message;
 
 pub(crate) const ICON_SIZE: u32 = 20;
-pub(crate) const AXIS_COLOR: Color = Color::from_rgb(0.45, 0.45, 0.45);
 
 pub fn file_entry<'a>(
     text: impl ToString,

@@ -7,8 +7,6 @@ use iced::{
     Element, Point, Renderer, Theme,
 };
 
-use crate::ui::AXIS_COLOR;
-
 pub struct Vectorscope {
     points: Vec<(f32, f32)>,
 }
@@ -57,7 +55,7 @@ impl canvas::Program<crate::Message> for Vectorscope {
             Point::new(bounds.width, 0.0),
             Point::new(bounds.width, bounds.size().height),
         );
-        let stroke = Stroke::default().with_color(AXIS_COLOR).with_width(3.0);
+        let stroke = Stroke::default().with_color(theme.extended_palette().background.strong.color).with_width(3.0);
 
         frame.stroke(&left_line, stroke);
         frame.stroke(&right_line, stroke);
