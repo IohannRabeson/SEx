@@ -1270,9 +1270,9 @@ dependencies = [
 
 [[package]]
 name = "file_icon_provider"
-version = "0.3.1"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "adef9ff8c03b1c04bc2c743e0395588001b1c8f5669cab0b300abe873b9c9227"
+checksum = "773d22845dd97ca6712e0e5fce960cac790fc598a286184e744eb81847a6d009"
 dependencies = [
  "gio 0.20.7",
  "gtk",

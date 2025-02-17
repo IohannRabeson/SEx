@@ -11,7 +11,7 @@ debug = true
 
 [dependencies]
 async-std = "1.12.0"
-file_icon_provider = "0.3.1"
+file_icon_provider = "0.4.0"
 iced = { git = "https://github.com/IohannRabeson/iced", features = ["async-std", "svg", "image", "canvas"] }
 itertools = "0.14.0"
 mime = "0.3.17"
