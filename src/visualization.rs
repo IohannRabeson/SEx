@@ -2,18 +2,21 @@ use iced::Task;
 use itertools::Itertools;
 use rodio::ChannelCount;
 
-use crate::{scope, vectorscope, vu_meter};
+use crate::{scope, spectrum, vectorscope, vu_meter};
 
 pub struct Visualization {}
 
 #[derive(Debug, Clone)]
 pub enum Message {
     AudioBuffer(ChannelCount, Vec<f32>),
+    SampleRateChanged(usize),
 }
 
 impl Visualization {
     pub fn new() -> Self {
-        Self {}
+        Self {
+            
+        }
     }
 
     pub fn update(&mut self, message: Message) -> Task<crate::Message> {
@@ -28,9 +31,13 @@ impl Visualization {
                     Task::done(crate::Message::Vectorscope(vectorscope::Message::Points(
                         points,
                     ))),
-                    Task::done(crate::Message::Scope(scope::Message::Buffer(mono))),
+                    Task::done(crate::Message::Scope(scope::Message::Buffer(mono.clone()))),
+                    Task::done(crate::Message::Spectrum(spectrum::Message::Buffer(mono))),
                 ])
             }
+            Message::SampleRateChanged(sample_rate) => {
+                Task::done(crate::Message::Spectrum(spectrum::Message::SampleRateChanged(sample_rate)))
+            },
         }
     }
 

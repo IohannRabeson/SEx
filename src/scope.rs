@@ -7,6 +7,8 @@ use iced::{
     Element, Length, Point, Renderer, Theme,
 };
 
+use crate::ui;
+
 pub struct Scope {
     buffer: Vec<f32>,
 }
@@ -61,9 +63,7 @@ impl canvas::Program<crate::Message> for Scope {
             p.move_to(Point::ORIGIN);
             p.line_to(Point::new(bounds.width, 0.0));
         });
-        let stroke = Stroke::default()
-            .with_color(theme.extended_palette().background.strong.color)
-            .with_width(3.0);
+        let stroke = ui::separation_line_stroke(theme);
 
         frame.stroke(&line_path, stroke);
 

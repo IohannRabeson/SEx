@@ -1,6 +1,6 @@
 use iced::{
     alignment::Vertical,
-    widget::{container, image, text::Wrapping, MouseArea, Row},
+    widget::{canvas::Stroke, container, image, text::Wrapping, MouseArea, Row},
     Element, Padding, Theme,
 };
 
@@ -50,4 +50,10 @@ fn selected_style(theme: &Theme) -> container::Style {
         background: Some(iced::Background::Color(theme.extended_palette().primary.weak.color)),
         ..Default::default()
     }
+}
+
+pub fn separation_line_stroke<'a>(theme: &'a Theme) -> Stroke<'a> {
+    Stroke::default()
+            .with_color(theme.extended_palette().background.strong.color)
+            .with_width(1.0)
 }

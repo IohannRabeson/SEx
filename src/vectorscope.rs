@@ -1,11 +1,13 @@
 use iced::{
     mouse,
     widget::{
-        canvas::{self, Fill, Frame, Path, Stroke},
+        canvas::{self, Fill, Frame, Path},
         Canvas,
     },
     Element, Point, Renderer, Theme,
 };
+
+use crate::ui;
 
 pub struct Vectorscope {
     points: Vec<(f32, f32)>,
@@ -59,9 +61,7 @@ impl canvas::Program<crate::Message> for Vectorscope {
             p.line_to(Point::new(bounds.width, bounds.size().height));
         });
 
-        let stroke = Stroke::default()
-            .with_color(theme.extended_palette().background.strong.color)
-            .with_width(3.0);
+        let stroke = ui::separation_line_stroke(&theme);
 
         frame.stroke(&path, stroke);
 

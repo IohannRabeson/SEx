@@ -16,6 +16,7 @@ use vectorscope::Vectorscope;
 use visualization::Visualization;
 use vu_meter::VuMeter;
 use waveform::Waveform;
+use spectrum::Spectrum;
 
 mod audio;
 mod file_explorer;
@@ -27,6 +28,7 @@ mod vectorscope;
 mod visualization;
 mod vu_meter;
 mod waveform;
+mod spectrum;
 
 fn main() -> iced::Result {
     iced::application("SEx - Sample Explorer", SEx::update, SEx::view)
@@ -46,6 +48,7 @@ enum Message {
     VuMeter(vu_meter::Message),
     Vectorscope(vectorscope::Message),
     Scope(scope::Message),
+    Spectrum(spectrum::Message),
     Visualization(visualization::Message),
     PaneResized(pane_grid::ResizeEvent),
     /// Send this message to show the waveform of a file and play it using Task::done.
@@ -64,6 +67,7 @@ enum PaneState {
     VuMeter,
     Vectorscope,
     Scope,
+    Spectrum,
 }
 
 struct SEx {
@@ -78,6 +82,7 @@ struct SEx {
     visualization: Visualization,
     vectorscope: Vectorscope,
     scope: Scope,
+    spectrum: Spectrum,
 }
 
 impl SEx {
@@ -123,6 +128,10 @@ impl SEx {
 
         panes.resize(vectorscope_scope_split, 0.8);
 
+        let (_, spectrum_split) = panes.split(pane_grid::Axis::Horizontal, waveform_pane, PaneState::Spectrum).unwrap();
+
+        panes.resize(spectrum_split, 0.6);
+
         (
             Self {
                 audio: Audio::new(),
@@ -136,6 +145,7 @@ impl SEx {
                 visualization: Visualization::new(),
                 vectorscope: Vectorscope::new(),
                 scope: Scope::new(),
+                spectrum: Spectrum::new(),
             },
             Task::perform(select_existing_directory(), Message::OpenDirectory),
         )
@@ -179,6 +189,9 @@ impl SEx {
             Message::Scope(message) => {
                 self.scope.update(message);
             }
+            Message::Spectrum(message) => {
+                self.spectrum.update(message);
+            }
             Message::SelectFile(Some(path)) => {
                 if path.is_file() && is_file_contains_audio(&path) {
                     self.audio.play(&path);
@@ -191,7 +204,9 @@ impl SEx {
                 self.audio.stop();
                 self.waveform.clear();
             }
-            Message::Visualization(message) => return self.visualization.update(message),
+            Message::Visualization(message) => {
+                return self.visualization.update(message);
+            }
         }
 
         Task::none()
@@ -213,6 +228,7 @@ impl SEx {
             PaneState::VuMeter => self.vu_meter.view().into(),
             PaneState::Vectorscope => self.vectorscope.view().into(),
             PaneState::Scope => self.scope.view().into(),
+            PaneState::Spectrum => self.spectrum.view().into(),
         });
 
         pane_grid

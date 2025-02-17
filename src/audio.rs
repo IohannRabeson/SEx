@@ -156,12 +156,20 @@ fn run_audio_player() -> impl Stream<Item = crate::Message> {
                         current_file_path = None;
                         current_file_duration = None;
 
-                        // Send an empty audio buffer to clear visualizers.
+                        // Send an empty audio buffer and zero sample rate to clear visualizers.
+                        output
+                            .try_send(crate::Message::Visualization(
+                                visualization::Message::SampleRateChanged(0),
+                            ))
+                            .unwrap();
+
                         output
                             .try_send(crate::Message::Visualization(
                                 visualization::Message::AudioBuffer(0, Vec::new()),
                             ))
                             .unwrap();
+
+                        
                     }
                 }
                 AudioCommand::QueryPosition => {
@@ -227,9 +235,10 @@ mod details {
         S: rodio::Source + Send + 'static,
         S::Item: rodio::Sample + Send,
     {
-        pub fn new(source: S, sender: Sender<Message>) -> Self {
+        pub fn new(source: S, mut sender: Sender<Message>) -> Self {
             let buffer_capacity = source.sample_rate() as usize * source.channels() as usize / 60;
 
+            sender.try_send(Message::Visualization(visualization::Message::SampleRateChanged(source.sample_rate() as usize))).unwrap();
             Self {
                 buffer: Vec::with_capacity(buffer_capacity),
                 buffer_capacity,
