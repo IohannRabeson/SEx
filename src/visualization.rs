@@ -1,7 +1,8 @@
 use iced::Task;
+use itertools::Itertools;
 use rodio::ChannelCount;
 
-use crate::{vectorscope, vu_meter};
+use crate::{scope, vectorscope, vu_meter};
 
 pub struct Visualization {}
 
@@ -20,12 +21,14 @@ impl Visualization {
             Message::AudioBuffer(channels, samples) => {
                 let rms = Self::compute_rms(channels, &samples);
                 let points = Self::vectorscope(channels, &samples);
-
+                let mono = Self::mono(channels, &samples);
+                
                 Task::batch([
                     Task::done(crate::Message::VuMeter(vu_meter::Message::Rms(rms))),
                     Task::done(crate::Message::Vectorscope(vectorscope::Message::Points(
                         points,
                     ))),
+                    Task::done(crate::Message::Scope(scope::Message::Buffer(mono))),
                 ])
             }
         }
@@ -77,6 +80,29 @@ impl Visualization {
                 }
             }
             _ => (),
+        }
+
+        result
+    }
+    
+    fn mono(channels: u16, samples: &[f32]) -> Vec<f32> {
+        if samples.is_empty() {
+            return Vec::new()
+        }
+        if channels == 1 {
+            return samples.to_vec()
+        }
+
+        let channels = channels as usize;
+        let frame_count = samples.len() / channels;
+        let mut result = vec![0f32; frame_count];
+        let mut i = 0;
+
+        for chunk in &samples.iter().chunks(channels) {
+            let average = chunk.sum::<f32>() / channels as f32;
+
+            result[i] = average;
+            i += 1;
         }
 
         result

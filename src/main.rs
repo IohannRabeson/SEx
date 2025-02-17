@@ -10,6 +10,7 @@ use iced::{
 };
 use icon_provider::IconProvider;
 use rfd::AsyncFileDialog;
+use scope::Scope;
 use search::Search;
 use vectorscope::Vectorscope;
 use visualization::Visualization;
@@ -19,6 +20,7 @@ use waveform::Waveform;
 mod audio;
 mod file_explorer;
 mod icon_provider;
+mod scope;
 mod search;
 mod ui;
 mod vectorscope;
@@ -43,6 +45,7 @@ enum Message {
     Audio(audio::Message),
     VuMeter(vu_meter::Message),
     Vectorscope(vectorscope::Message),
+    Scope(scope::Message),
     Visualization(visualization::Message),
     PaneResized(pane_grid::ResizeEvent),
     /// Send this message to show the waveform of a file and play it using Task::done.
@@ -60,6 +63,7 @@ enum PaneState {
     Waveform,
     VuMeter,
     Vectorscope,
+    Scope,
 }
 
 struct SEx {
@@ -73,6 +77,7 @@ struct SEx {
     icon_provider: IconProvider,
     visualization: Visualization,
     vectorscope: Vectorscope,
+    scope: Scope,
 }
 
 impl SEx {
@@ -108,6 +113,10 @@ impl SEx {
 
         panes.resize(waveform_vu_meter_split, 0.8);
 
+        let (_, vectorscope_scope_split) = panes.split(pane_grid::Axis::Horizontal, vectorscope_pane, PaneState::Scope).unwrap();
+
+        panes.resize(vectorscope_scope_split, 0.8);
+
         (
             Self {
                 audio: Audio::new(),
@@ -120,6 +129,7 @@ impl SEx {
                 vu_meter: VuMeter::new(),
                 visualization: Visualization::new(),
                 vectorscope: Vectorscope::new(),
+                scope: Scope::new(),
             },
             Task::perform(select_existing_directory(), Message::OpenDirectory),
         )
@@ -160,6 +170,9 @@ impl SEx {
             Message::Vectorscope(message) => {
                 self.vectorscope.update(message);
             }
+            Message::Scope(message) => {
+                self.scope.update(message);
+            }
             Message::SelectFile(Some(path)) => {
                 if path.is_file() && is_file_contains_audio(&path) {
                     self.audio.play(&path);
@@ -193,6 +206,7 @@ impl SEx {
             PaneState::Waveform => self.waveform.view().into(),
             PaneState::VuMeter => self.vu_meter.view().into(),
             PaneState::Vectorscope => self.vectorscope.view().into(),
+            PaneState::Scope => self.scope.view().into(),
         });
 
         pane_grid
