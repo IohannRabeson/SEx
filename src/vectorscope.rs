@@ -50,17 +50,23 @@ impl canvas::Program<crate::Message> for Vectorscope {
         let center_x = bounds.width / 2.0;
         let center_y = bounds.height / 2.0;
 
-        let left_line = Path::line(Point::new(0.0, 0.0), Point::new(0.0, bounds.size().height));
-        let right_line = Path::line(
-            Point::new(bounds.width, 0.0),
-            Point::new(bounds.width, bounds.size().height),
-        );
-        let stroke = Stroke::default().with_color(theme.extended_palette().background.strong.color).with_width(3.0);
+        // Draw separating lines.
+        let path = Path::new(|p|{
+            p.move_to(Point::ORIGIN);
+            p.line_to(Point::new(0.0, bounds.size().height));
 
-        frame.stroke(&left_line, stroke);
-        frame.stroke(&right_line, stroke);
+            p.move_to(Point::new(bounds.width, 0.0));
+            p.line_to(Point::new(bounds.width, bounds.size().height));
+        });
 
-        let scale = bounds.width.min(bounds.height) / 2.0; // Scale factor
+        let stroke = Stroke::default()
+            .with_color(theme.extended_palette().background.strong.color)
+            .with_width(3.0);
+
+        frame.stroke(&path, stroke);
+
+        // Draw scope.
+        let scale = bounds.width.min(bounds.height) / 2.0;
         let fill = Fill::from(theme.palette().primary);
 
         for &(x, y) in &self.points {
