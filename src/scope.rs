@@ -1,5 +1,10 @@
 use iced::{
-    mouse, widget::{canvas::{self, Frame, Geometry, Path, Stroke}, Canvas}, Element, Length, Point, Renderer, Theme
+    mouse,
+    widget::{
+        canvas::{self, Frame, Geometry, Path, Stroke},
+        Canvas,
+    },
+    Element, Length, Point, Renderer, Theme,
 };
 
 pub struct Scope {
@@ -13,9 +18,7 @@ pub enum Message {
 
 impl Scope {
     pub fn new() -> Self {
-        Self {
-            buffer: Vec::new(),
-        }
+        Self { buffer: Vec::new() }
     }
 
     pub fn update(&mut self, message: Message) {
@@ -28,7 +31,10 @@ impl Scope {
     }
 
     pub fn view(&self) -> Element<crate::Message> {
-        Canvas::new(self).width(Length::Fill).height(Length::Fill).into()
+        Canvas::new(self)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .into()
     }
 }
 
@@ -45,7 +51,7 @@ impl canvas::Program<crate::Message> for Scope {
     ) -> Vec<Geometry> {
         let mut frame = Frame::new(renderer, bounds.size());
 
-        let line_path = Path::new(|p|{
+        let line_path = Path::new(|p| {
             p.move_to(Point::ORIGIN);
             p.line_to(Point::new(0.0, bounds.size().height));
 

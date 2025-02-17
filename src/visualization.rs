@@ -22,7 +22,7 @@ impl Visualization {
                 let rms = Self::compute_rms(channels, &samples);
                 let points = Self::vectorscope(channels, &samples);
                 let mono = Self::mono(channels, &samples);
-                
+
                 Task::batch([
                     Task::done(crate::Message::VuMeter(vu_meter::Message::Rms(rms))),
                     Task::done(crate::Message::Vectorscope(vectorscope::Message::Points(
@@ -84,13 +84,13 @@ impl Visualization {
 
         result
     }
-    
+
     fn mono(channels: u16, samples: &[f32]) -> Vec<f32> {
         if samples.is_empty() {
-            return Vec::new()
+            return Vec::new();
         }
         if channels == 1 {
-            return samples.to_vec()
+            return samples.to_vec();
         }
 
         let channels = channels as usize;

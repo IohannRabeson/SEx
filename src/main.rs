@@ -113,7 +113,13 @@ impl SEx {
 
         panes.resize(waveform_vu_meter_split, 0.8);
 
-        let (_, vectorscope_scope_split) = panes.split(pane_grid::Axis::Horizontal, vectorscope_pane, PaneState::Scope).unwrap();
+        let (_, vectorscope_scope_split) = panes
+            .split(
+                pane_grid::Axis::Horizontal,
+                vectorscope_pane,
+                PaneState::Scope,
+            )
+            .unwrap();
 
         panes.resize(vectorscope_scope_split, 0.8);
 

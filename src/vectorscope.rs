@@ -51,7 +51,7 @@ impl canvas::Program<crate::Message> for Vectorscope {
         let center_y = bounds.height / 2.0;
 
         // Draw separating lines.
-        let path = Path::new(|p|{
+        let path = Path::new(|p| {
             p.move_to(Point::ORIGIN);
             p.line_to(Point::new(0.0, bounds.size().height));
 
@@ -68,7 +68,7 @@ impl canvas::Program<crate::Message> for Vectorscope {
         // Draw scope.
         let scale = bounds.width.min(bounds.height) / 2.0;
         let fill = Fill::from(theme.palette().primary);
-        
+
         // Cumulating all the circles into a unique path leads to performance issue.
         for &(x, y) in &self.points {
             let pos = Point::new(center_x + x * scale, center_y - y * scale);
