@@ -8,6 +8,9 @@ use crate::ui;
 const FFT_SIZE: usize = 16384 / 4;
 const MIN_FREQ: f32 = 20.0;
 const MAX_FREQ: f32 = 10000.0;
+// 1023.75037 is the value I get for the bin of frequency 9996.094 (which is the maximum frequency
+// displayed) if I use a generated sine at 9996.094 at 0dB. So I'm rounding to 1024 to be sure its big enough.
+const MAGNITUDE_ZERO_DB: f32 = 1024.0;
 
 pub struct Spectrum {
     scratch_buffer: Box<[Complex<f32>]>,
@@ -59,7 +62,12 @@ impl Spectrum {
                         let frequency = bin_resolution * index as f32;
 
                         if frequency >= MIN_FREQ && frequency <= MAX_FREQ {
-                            self.display_buffer.push((result.re * result.re + result.im * result.im).sqrt());
+                            let magnitude = (result.re * result.re + result.im * result.im).sqrt();
+                            let amplitude = magnitude / MAGNITUDE_ZERO_DB;
+                            let db = 20.0 * (amplitude.max(f32::EPSILON)).log10();
+                            let normalized = ((db + 60.0) / 60.0).clamp(0.0, 1.0);
+
+                            self.display_buffer.push(normalized);
                         }
                     }
                     self.temporary.drain(0..FFT_SIZE);
@@ -100,11 +108,12 @@ impl canvas::Program<crate::Message> for Spectrum {
         let bin_count = self.display_buffer.len() / 2;
         let bin_width = frame.width() / bin_count as f32;
 
-        for (bin_index, bin_height) in self.display_buffer.iter().enumerate() {
+        for (bin_index, amplitude) in self.display_buffer.iter().enumerate() {
+            let bin_height = amplitude * frame.height();
             let bin_left = bin_index as f32 * bin_width;
             let bin_top = frame.height() - bin_height;
 
-            frame.fill_rectangle(Point::new(bin_left, bin_top), Size::new(bin_width, *bin_height), theme.palette().primary);
+            frame.fill_rectangle(Point::new(bin_left, bin_top), Size::new(bin_width, bin_height), theme.palette().primary);
         }
 
         let path = Path::line(Point::ORIGIN, Point::new(frame.width(), 0.0));
