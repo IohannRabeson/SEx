@@ -5,12 +5,13 @@ use rustfft::{num_complex::Complex, Fft, FftPlanner};
 
 use crate::ui;
 
+/// FFT size, bigger FFT cause slower updates. 
 const FFT_SIZE: usize = 16384 / 4;
+/// 1023.75037 is the value I get for the bin of frequency 9996.094 (which is the maximum frequency
+/// displayed) if I use a generated sine at 9996.094 at 0dB. So I'm rounding to 1024 to be sure its big enough.
+const MAGNITUDE_ZERO_DB: f32 = 1024.0;
 const MIN_FREQ: f32 = 20.0;
 const MAX_FREQ: f32 = 10000.0;
-// 1023.75037 is the value I get for the bin of frequency 9996.094 (which is the maximum frequency
-// displayed) if I use a generated sine at 9996.094 at 0dB. So I'm rounding to 1024 to be sure its big enough.
-const MAGNITUDE_ZERO_DB: f32 = 1024.0;
 
 pub struct Spectrum {
     scratch_buffer: Box<[Complex<f32>]>,
@@ -45,33 +46,7 @@ impl Spectrum {
                     return
                 }
 
-                self.temporary.extend(buffer.into_iter());
-
-                if self.temporary.len() >= FFT_SIZE {
-                    for ((result, window), fft_input_buffer) in self.temporary.iter().take(FFT_SIZE).zip(self.window.iter()).zip(self.fft_input_buffer.iter_mut()) {
-                        fft_input_buffer.re = result * window;
-                        fft_input_buffer.im = 0f32;
-                    }
-                    self.fft.process_with_scratch(&mut self.fft_input_buffer, &mut self.scratch_buffer);
-                    
-                    let bin_resolution = self.sample_rate as f32 / self.fft_input_buffer.len() as f32;
-
-                    self.display_buffer.clear();
-
-                    for (index, result) in self.fft_input_buffer.iter().take(FFT_SIZE / 2).enumerate() {
-                        let frequency = bin_resolution * index as f32;
-
-                        if frequency >= MIN_FREQ && frequency <= MAX_FREQ {
-                            let magnitude = (result.re * result.re + result.im * result.im).sqrt();
-                            let amplitude = magnitude / MAGNITUDE_ZERO_DB;
-                            let db = 20.0 * (amplitude.max(f32::EPSILON)).log10();
-                            let normalized = ((db + 60.0) / 60.0).clamp(0.0, 1.0);
-
-                            self.display_buffer.push(normalized);
-                        }
-                    }
-                    self.temporary.drain(0..FFT_SIZE);
-                }
+                self.process_buffer(buffer);
             },
             Message::SampleRateChanged(sample_rate) => {
                 self.sample_rate = sample_rate;
@@ -79,6 +54,36 @@ impl Spectrum {
         }
     }
 
+    fn process_buffer(&mut self, buffer: Vec<f32>) {
+        self.temporary.extend(buffer.into_iter());
+    
+        if self.temporary.len() >= FFT_SIZE {
+            for ((result, window), fft_input_buffer) in self.temporary.iter().take(FFT_SIZE).zip(self.window.iter()).zip(self.fft_input_buffer.iter_mut()) {
+                fft_input_buffer.re = result * window;
+                fft_input_buffer.im = 0f32;
+            }
+            self.fft.process_with_scratch(&mut self.fft_input_buffer, &mut self.scratch_buffer);
+    
+            let bin_resolution = self.sample_rate as f32 / self.fft_input_buffer.len() as f32;
+    
+            self.display_buffer.clear();
+    
+            for (index, result) in self.fft_input_buffer.iter().take(FFT_SIZE / 2).enumerate() {
+                let frequency = bin_resolution * index as f32;
+    
+                if frequency >= MIN_FREQ && frequency <= MAX_FREQ {
+                    let magnitude = (result.re * result.re + result.im * result.im).sqrt();
+                    let amplitude = magnitude / MAGNITUDE_ZERO_DB;
+                    let db = 20.0 * (amplitude.max(f32::EPSILON)).log10();
+                    let normalized = ((db + 60.0) / 60.0).clamp(0.0, 1.0);
+    
+                    self.display_buffer.push(normalized);
+                }
+            }
+            self.temporary.drain(0..FFT_SIZE);
+        }
+    }
+    
     pub fn view(&self) -> Element<crate::Message> {
         Canvas::new(self)
             .width(Length::Fill)
