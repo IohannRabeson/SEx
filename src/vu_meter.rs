@@ -7,6 +7,8 @@ use iced::{
     Element, Length, Point, Rectangle, Renderer, Size, Theme,
 };
 
+use crate::ui;
+
 #[derive(Debug, Clone)]
 pub enum Message {
     /// RMS per channel
@@ -76,7 +78,7 @@ impl canvas::Program<crate::Message> for VuMeter {
                 frame.fill_rectangle(
                     Point::new(i as f32 * width, y),
                     Size::new(width, height),
-                    theme.palette().primary,
+                    ui::main_color(theme),
                 );
             }
         });
