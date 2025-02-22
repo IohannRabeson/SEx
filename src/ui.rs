@@ -47,7 +47,7 @@ pub fn file_entry<'a>(
 
 fn selected_style(theme: &Theme) -> container::Style {
     container::Style {
-        background: Some(iced::Background::Color(theme.palette().primary)),
+        background: Some(iced::Background::Color(theme.extended_palette().primary.weak.color)),
         ..Default::default()
     }
 }
