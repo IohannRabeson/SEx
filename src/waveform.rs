@@ -358,7 +358,7 @@ impl canvas::Program<crate::Message> for Waveform {
                         frame.fill_rectangle(
                             Point::new(index as f32, (frame.height() - height) / 2f32),
                             Size::new(1f32, height),
-                            palette.primary,
+                            ui::main_color(theme),
                         )
                     }
                 }
@@ -387,7 +387,7 @@ impl canvas::Program<crate::Message> for Waveform {
 
 use std::sync::LazyLock;
 
-use crate::audio;
+use crate::{audio, ui};
 
 static WAVEFORM_CONTAINER: LazyLock<container::Id> =
     LazyLock::new(|| container::Id::new("waveform"));

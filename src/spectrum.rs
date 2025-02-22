@@ -118,7 +118,7 @@ impl canvas::Program<crate::Message> for Spectrum {
             let bin_left = bin_index as f32 * bin_width;
             let bin_top = frame.height() - bin_height;
 
-            frame.fill_rectangle(Point::new(bin_left, bin_top), Size::new(bin_width, bin_height), theme.palette().primary);
+            frame.fill_rectangle(Point::new(bin_left, bin_top), Size::new(bin_width, bin_height), ui::main_color(theme));
         }
 
         let path = Path::line(Point::ORIGIN, Point::new(frame.width(), 0.0));

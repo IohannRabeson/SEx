@@ -1,7 +1,5 @@
 use iced::{
-    alignment::Vertical,
-    widget::{canvas::Stroke, container, image, text::Wrapping, MouseArea, Row},
-    Element, Padding, Theme,
+    alignment::Vertical, widget::{canvas::Stroke, container, image, text::Wrapping, MouseArea, Row}, Color, Element, Padding, Theme
 };
 
 use crate::Message;
@@ -56,4 +54,8 @@ pub fn separation_line_stroke<'a>(theme: &'a Theme) -> Stroke<'a> {
     Stroke::default()
             .with_color(theme.extended_palette().background.strong.color)
             .with_width(1.0)
+}
+
+pub fn main_color(theme: &Theme) -> Color {
+    theme.extended_palette().primary.weak.color
 }
