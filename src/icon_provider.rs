@@ -22,6 +22,7 @@ impl Default for IconProvider {
     fn default() -> Self {
         Self {
             cache: RefCell::new(BTreeMap::new()),
+            // Poor man retina screen detection..
             #[cfg(target_os = "macos")]
             size: (ui::ICON_SIZE * 2) as u16,
             #[cfg(not(target_os = "macos"))]
