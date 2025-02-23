@@ -61,7 +61,7 @@ impl canvas::Program<crate::Message> for Vectorscope {
             p.line_to(Point::new(bounds.width, bounds.size().height));
         });
 
-        let stroke = ui::separation_line_stroke(&theme);
+        let stroke = ui::separation_line_stroke(theme);
 
         frame.stroke(&path, stroke);
 
