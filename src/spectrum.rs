@@ -67,7 +67,7 @@ impl Spectrum {
     }
 
     fn process_buffer(&mut self, buffer: Vec<f32>) {
-        self.temporary.extend(buffer.into_iter());
+        self.temporary.extend(buffer);
 
         if self.temporary.len() >= FFT_SIZE {
             for ((result, window), fft_input_buffer) in self
@@ -90,7 +90,7 @@ impl Spectrum {
             for (index, result) in self.fft_input_buffer.iter().take(FFT_SIZE / 2).enumerate() {
                 let frequency = bin_resolution * index as f32;
 
-                if frequency >= MIN_FREQ && frequency <= MAX_FREQ {
+                if (MIN_FREQ..=MAX_FREQ).contains(&frequency) {
                     let magnitude = (result.re * result.re + result.im * result.im).sqrt();
                     let amplitude = magnitude / MAGNITUDE_ZERO_DB;
                     let db = 20.0 * (amplitude.max(f32::EPSILON)).log10();

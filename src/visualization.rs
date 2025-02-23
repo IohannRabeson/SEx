@@ -54,16 +54,16 @@ impl Visualization {
 
         let frames_count = (buffer.len() / channels) as f32;
 
-        for i in 0..channels {
-            rms_per_channels[i] /= frames_count;
-            rms_per_channels[i] = rms_per_channels[i].sqrt();
+        for rms in rms_per_channels.iter_mut().take(channels) {
+            *rms /= frames_count;
+            *rms = rms.sqrt(); 
         }
 
         rms_per_channels
     }
 
     fn vectorscope(channels: ChannelCount, samples: &[f32]) -> Vec<(f32, f32)> {
-        if channels == 0 || samples.len() == 0 {
+        if channels == 0 || samples.is_empty() {
             return Vec::new();
         }
 
@@ -101,13 +101,11 @@ impl Visualization {
         let channels = channels as usize;
         let frame_count = samples.len() / channels;
         let mut result = vec![0f32; frame_count];
-        let mut i = 0;
 
-        for chunk in &samples.iter().chunks(channels) {
+        for (i, chunk) in (&samples.iter().chunks(channels)).into_iter().enumerate() {
             let average = chunk.sum::<f32>() / channels as f32;
 
             result[i] = average;
-            i += 1;
         }
 
         result

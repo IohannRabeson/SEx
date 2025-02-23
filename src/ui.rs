@@ -54,7 +54,7 @@ fn selected_style(theme: &Theme) -> container::Style {
     }
 }
 
-pub fn separation_line_stroke<'a>(theme: &'a Theme) -> Stroke<'a> {
+pub fn separation_line_stroke(theme: &Theme) -> Stroke<'_> {
     Stroke::default()
         .with_color(theme.extended_palette().background.strong.color)
         .with_width(1.0)
