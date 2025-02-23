@@ -168,8 +168,6 @@ fn run_audio_player() -> impl Stream<Item = crate::Message> {
                                 visualization::Message::AudioBuffer(0, Vec::new()),
                             ))
                             .unwrap();
-
-                        
                     }
                 }
                 AudioCommand::QueryPosition => {
@@ -238,7 +236,11 @@ mod details {
         pub fn new(source: S, mut sender: Sender<Message>) -> Self {
             let buffer_capacity = source.sample_rate() as usize * source.channels() as usize / 60;
 
-            sender.try_send(Message::Visualization(visualization::Message::SampleRateChanged(source.sample_rate() as usize))).unwrap();
+            sender
+                .try_send(Message::Visualization(
+                    visualization::Message::SampleRateChanged(source.sample_rate() as usize),
+                ))
+                .unwrap();
             Self {
                 buffer: Vec::with_capacity(buffer_capacity),
                 buffer_capacity,

@@ -14,9 +14,7 @@ pub enum Message {
 
 impl Visualization {
     pub fn new() -> Self {
-        Self {
-            
-        }
+        Self {}
     }
 
     pub fn update(&mut self, message: Message) -> Task<crate::Message> {
@@ -35,9 +33,9 @@ impl Visualization {
                     Task::done(crate::Message::Spectrum(spectrum::Message::Buffer(mono))),
                 ])
             }
-            Message::SampleRateChanged(sample_rate) => {
-                Task::done(crate::Message::Spectrum(spectrum::Message::SampleRateChanged(sample_rate)))
-            },
+            Message::SampleRateChanged(sample_rate) => Task::done(crate::Message::Spectrum(
+                spectrum::Message::SampleRateChanged(sample_rate),
+            )),
         }
     }
 
