@@ -1,5 +1,7 @@
 use iced::{
-    alignment::Vertical, widget::{canvas::Stroke, container, image, text::Wrapping, MouseArea, Row}, Color, Element, Padding, Theme
+    alignment::Vertical,
+    widget::{canvas::Stroke, container, image, text::Wrapping, MouseArea, Row},
+    Color, Element, Padding, Theme,
 };
 
 use crate::Message;
@@ -45,15 +47,17 @@ pub fn file_entry<'a>(
 
 fn selected_style(theme: &Theme) -> container::Style {
     container::Style {
-        background: Some(iced::Background::Color(theme.extended_palette().primary.weak.color)),
+        background: Some(iced::Background::Color(
+            theme.extended_palette().primary.weak.color,
+        )),
         ..Default::default()
     }
 }
 
 pub fn separation_line_stroke<'a>(theme: &'a Theme) -> Stroke<'a> {
     Stroke::default()
-            .with_color(theme.extended_palette().background.strong.color)
-            .with_width(1.0)
+        .with_color(theme.extended_palette().background.strong.color)
+        .with_width(1.0)
 }
 
 pub fn main_color(theme: &Theme) -> Color {

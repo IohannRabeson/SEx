@@ -12,23 +12,23 @@ use icon_provider::IconProvider;
 use rfd::AsyncFileDialog;
 use scope::Scope;
 use search::Search;
+use spectrum::Spectrum;
 use vectorscope::Vectorscope;
 use visualization::Visualization;
 use vu_meter::VuMeter;
 use waveform::Waveform;
-use spectrum::Spectrum;
 
 mod audio;
 mod file_explorer;
 mod icon_provider;
 mod scope;
 mod search;
+mod spectrum;
 mod ui;
 mod vectorscope;
 mod visualization;
 mod vu_meter;
 mod waveform;
-mod spectrum;
 
 fn main() -> iced::Result {
     iced::application("SEx - Sample Explorer", SEx::update, SEx::view)
@@ -128,7 +128,13 @@ impl SEx {
 
         panes.resize(vectorscope_scope_split, 0.8);
 
-        let (_, spectrum_split) = panes.split(pane_grid::Axis::Horizontal, waveform_pane, PaneState::Spectrum).unwrap();
+        let (_, spectrum_split) = panes
+            .split(
+                pane_grid::Axis::Horizontal,
+                waveform_pane,
+                PaneState::Spectrum,
+            )
+            .unwrap();
 
         panes.resize(spectrum_split, 0.6);
 
