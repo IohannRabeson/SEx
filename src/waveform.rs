@@ -339,13 +339,12 @@ impl canvas::Program<crate::Message> for Waveform {
     ) -> Vec<canvas::Geometry<Renderer>> {
         let geometry = self.cache.draw(renderer, bounds.size(), |frame| {
             let samples_in_block = self.total_samples / frame.width() as usize;
-            let palette = theme.palette();
 
             // Draw central line
             frame.fill_rectangle(
                 Point::new(0.0, frame.height() / 2.0),
                 Size::new(frame.width(), 1.0),
-                line_color(&palette, self.total_samples > 0),
+                theme.extended_palette().secondary.base.color,
             );
 
             if samples_in_block > 0 {
@@ -367,7 +366,7 @@ impl canvas::Program<crate::Message> for Waveform {
                 frame.fill_rectangle(
                     Point::new(self.play_position * frame.width(), 0f32),
                     Size::new(1f32, frame.height()),
-                    palette.success,
+                    theme.extended_palette().secondary.base.color,
                 );
 
                 // Draw cursor position
@@ -375,7 +374,7 @@ impl canvas::Program<crate::Message> for Waveform {
                     frame.fill_rectangle(
                         Point::new(cursor_position.x, 0f32),
                         Size::new(1f32, frame.height()),
-                        Color::from_rgb8(150, 150, 150),
+                        theme.extended_palette().secondary.base.color,
                     );
                 }
             }
