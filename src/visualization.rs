@@ -56,7 +56,7 @@ impl Visualization {
 
         for rms in rms_per_channels.iter_mut().take(channels) {
             *rms /= frames_count;
-            *rms = rms.sqrt(); 
+            *rms = rms.sqrt();
         }
 
         rms_per_channels
