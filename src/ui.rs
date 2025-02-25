@@ -57,7 +57,8 @@ fn selected_style(theme: &Theme) -> container::Style {
 pub fn separation_line_stroke(theme: &Theme) -> Stroke<'_> {
     Stroke::default()
         .with_color(theme.extended_palette().background.strong.color)
-        .with_width(1.0)
+        // Choosing a width of 1 causes a bug on Windows only where horizontal lines are not displayed.
+        .with_width(2.0)
 }
 
 pub fn main_color(theme: &Theme) -> Color {
