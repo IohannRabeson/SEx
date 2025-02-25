@@ -52,12 +52,12 @@ impl Spectrum {
     }
 
     fn process_buffer(&mut self, buffer: Vec<f32>) {
-        if self.processor.process(&buffer) {
-            let bin_resolution = self.sample_rate as f32 / self.processor.fft_size() as f32;
+        let bin_resolution = self.sample_rate as f32 / self.processor.fft_size() as f32;
 
+        if let Some(results) = self.processor.process(&buffer) {
             self.display_buffer.clear();
 
-            for (index, result) in self.processor.results().take(FFT_SIZE / 2).enumerate() {
+            for (index, result) in results.take(FFT_SIZE / 2).enumerate() {
                 let frequency = bin_resolution * index as f32;
 
                 if (MIN_FREQ..=MAX_FREQ).contains(&frequency) {

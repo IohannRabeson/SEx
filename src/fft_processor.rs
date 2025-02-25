@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use rustfft::{num_complex::Complex, Fft, FftPlanner};
 
-
 pub struct FftProcessor<const FFT_SIZE: usize> {
     scratch_buffer: Box<[Complex<f32>]>,
     fft_input_buffer: Box<[Complex<f32>]>,
@@ -28,7 +27,7 @@ impl<const FFT_SIZE: usize> FftProcessor<FFT_SIZE> {
         }
     }
 
-    pub fn process(&mut self, buffer: &[f32]) -> bool {
+    pub fn process(&mut self, buffer: &[f32]) -> Option<std::slice::Iter<'_, Complex<f32>>> {
         self.temporary.extend(buffer);
 
         if self.temporary.len() >= FFT_SIZE {
@@ -47,14 +46,10 @@ impl<const FFT_SIZE: usize> FftProcessor<FFT_SIZE> {
 
             self.temporary.drain(0..FFT_SIZE);
 
-            true
+            Some(self.fft_input_buffer.iter())
         } else {
-            false
+            None
         }
-    }
-
-    pub fn results(&self) -> impl Iterator<Item = &Complex<f32>> {
-        self.fft_input_buffer.iter()
     }
 
     pub const fn fft_size(&self) -> usize {
