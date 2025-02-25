@@ -19,6 +19,7 @@ use vu_meter::VuMeter;
 use waveform::Waveform;
 
 mod audio;
+mod fft_processor;
 mod file_explorer;
 mod icon_provider;
 mod scope;
@@ -29,7 +30,6 @@ mod vectorscope;
 mod visualization;
 mod vu_meter;
 mod waveform;
-mod fft_processor;
 
 fn main() -> iced::Result {
     iced::application("SEx - Sample Explorer", SEx::update, SEx::view)

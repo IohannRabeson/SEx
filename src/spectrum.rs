@@ -14,7 +14,7 @@ use crate::{fft_processor::FftProcessor, ui};
 /// The priority here is the visual result.
 const FFT_SIZE: usize = 2048;
 /// 1023.75037 is the value I get for the bin of frequency 9996.094 (which is the maximum frequency
-/// displayed) if I play a generated sine at 9996.094Hz at 0dB. 
+/// displayed) if I play a generated sine at 9996.094Hz at 0dB.
 /// So I'm rounding to 1024 to be sure its big enough.
 const MAGNITUDE_ZERO_DB: f32 = 1024.0;
 const MIN_FREQ: f32 = 20.0;

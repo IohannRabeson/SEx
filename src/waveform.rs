@@ -13,8 +13,7 @@ use iced::{
         canvas::{self, Cache},
         container, Canvas, MouseArea,
     },
-    window, Element, Event, Length, Point, Rectangle, Renderer, Size, Subscription, Task,
-    Theme,
+    window, Element, Event, Length, Point, Rectangle, Renderer, Size, Subscription, Task, Theme,
 };
 use rodio::{Decoder, Source};
 
