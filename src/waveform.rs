@@ -9,12 +9,11 @@ use iced::{
     event,
     futures::{channel::mpsc, FutureExt, SinkExt, Stream, StreamExt},
     mouse,
-    theme::Palette,
     widget::{
         canvas::{self, Cache},
         container, Canvas, MouseArea,
     },
-    window, Color, Element, Event, Length, Point, Rectangle, Renderer, Size, Subscription, Task,
+    window, Element, Event, Length, Point, Rectangle, Renderer, Size, Subscription, Task,
     Theme,
 };
 use rodio::{Decoder, Source};
@@ -313,17 +312,6 @@ async fn process_command(command: WaveformCommand, output: &mut mpsc::Sender<Mes
             State::Idle
         }
     }
-}
-
-fn line_color(palette: &Palette, has_samples: bool) -> Color {
-    let mut color = palette.text;
-    let factor = if has_samples { 0.8 } else { 0.45 };
-
-    color.r *= factor;
-    color.g *= factor;
-    color.b *= factor;
-
-    color
 }
 
 impl canvas::Program<crate::Message> for Waveform {
