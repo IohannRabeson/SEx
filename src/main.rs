@@ -29,6 +29,7 @@ mod vectorscope;
 mod visualization;
 mod vu_meter;
 mod waveform;
+mod fft_processor;
 
 fn main() -> iced::Result {
     iced::application("SEx - Sample Explorer", SEx::update, SEx::view)
