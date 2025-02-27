@@ -26,7 +26,7 @@ pub enum Message {
 }
 
 pub enum AudioCommand {
-    Initialize(Arc<Mixer<f32>>),
+    Initialize(Arc<Mixer>),
     Play(PathBuf),
     Stop,
     QueryPosition,
@@ -36,7 +36,7 @@ pub enum AudioCommand {
 pub struct Audio {
     command_sender: Option<Sender<AudioCommand>>,
     _output_stream: OutputStream,
-    mixer: Arc<Mixer<f32>>,
+    mixer: Arc<Mixer>,
 }
 
 impl Audio {
@@ -213,16 +213,15 @@ mod details {
     use std::time::Duration;
 
     use iced::futures::channel::mpsc::Sender;
-    use rodio::{source::SeekError, Sample};
+    use rodio::source::SeekError;
 
     use crate::{visualization, Message};
 
     pub(crate) struct SourcePicker<S>
     where
         S: rodio::Source + Send + 'static,
-        S::Item: rodio::Sample + Send,
     {
-        buffer: Vec<S::Item>,
+        buffer: Vec<f32>,
         buffer_capacity: usize,
         source: S,
         sender: Sender<Message>,
@@ -231,7 +230,6 @@ mod details {
     impl<S> SourcePicker<S>
     where
         S: rodio::Source + Send + 'static,
-        S::Item: rodio::Sample + Send,
     {
         pub fn new(source: S, mut sender: Sender<Message>) -> Self {
             let buffer_capacity = source.sample_rate() as usize * source.channels() as usize / 60;
@@ -260,7 +258,7 @@ mod details {
             self.sender
                 .try_send(Message::Visualization(visualization::Message::AudioBuffer(
                     self.source.channels(),
-                    self.buffer.iter().map(|sample| sample.to_f32()).collect(),
+                    self.buffer.iter().map(|sample| *sample).collect(),
                 )))
                 .unwrap();
 
@@ -271,7 +269,6 @@ mod details {
     impl<S> rodio::Source for SourcePicker<S>
     where
         S: rodio::Source + Send + 'static,
-        S::Item: rodio::Sample + Send,
     {
         fn current_span_len(&self) -> Option<usize> {
             self.source.current_span_len()
@@ -297,7 +294,6 @@ mod details {
     impl<S> Iterator for SourcePicker<S>
     where
         S: rodio::Source + Send + 'static,
-        S::Item: rodio::Sample + Send + Copy,
     {
         type Item = S::Item;
 
