@@ -38,7 +38,8 @@ pub enum Message {
     Clear,
     SamplesReady { path: Vec<i16>, generation: usize },
     PlayPosition(f32),
-    Click(Point),
+    Click,
+    CursorMoved(Point),
     Resized,
     BoundsChanged(Option<Rectangle>),
 }
@@ -52,6 +53,7 @@ pub struct Waveform {
     command_sender: Option<mpsc::Sender<WaveformCommand>>,
     current_generation: usize,
     bounds: Option<Rectangle>,
+    cursor_position: Option<Point>,
 }
 
 enum State {
@@ -120,14 +122,20 @@ impl Waveform {
             Message::PlayPosition(position) => {
                 self.play_position = position;
             }
-            Message::Click(point) => {
-                if let Some(bounds) = self.bounds.as_ref() {
-                    let position = point.x / bounds.width;
+            Message::Click => {
+                if let Some(cursor_position) = self.cursor_position.as_ref()
+                {
+                    if let Some(bounds) = self.bounds.as_ref() {
+                        let position = cursor_position.x / bounds.width;
 
-                    return Task::done(crate::Message::Audio(audio::Message::SetPosition(
-                        position,
-                    )));
+                        return Task::done(crate::Message::Audio(audio::Message::SetPosition(
+                            position,
+                        )));
+                    }
                 }
+            }
+            Message::CursorMoved(position) => {
+                self.cursor_position = Some(position);
             }
             Message::Resized => return self.update_bounds(),
             Message::BoundsChanged(rectangle) => {
@@ -145,7 +153,8 @@ impl Waveform {
             container(Canvas::new(self).width(Length::Fill).height(Length::Fill))
                 .id(WAVEFORM_CONTAINER.clone()),
         )
-        .on_press_position(|position| crate::Message::Waveform(Message::Click(position)))
+        .on_move(|position| crate::Message::Waveform(Message::CursorMoved(position)))
+        .on_press(crate::Message::Waveform(Message::Click))
         .into()
     }
 
@@ -170,7 +179,7 @@ impl Waveform {
 }
 
 fn waveform_loading() -> impl Stream<Item = Message> {
-    iced::stream::channel(8, |mut output| async move {
+    iced::stream::channel(8, async move |mut output| {
         let (command_sender, mut command_receiver) = mpsc::channel::<WaveformCommand>(8);
 
         output
