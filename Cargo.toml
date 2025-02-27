@@ -13,12 +13,12 @@ debug = true
 apodize = "1.0.0"
 async-std = "1.12.0"
 file_icon_provider = "0.4.0"
-iced = { git = "https://github.com/IohannRabeson/iced", features = ["async-std", "svg", "image", "canvas"] }
+iced = { git = "https://github.com/iced-rs/iced", rev = "beddf49c76f3b43e7b33452831e1293cad28fd89", features = ["async-std", "svg", "image", "canvas"] }
 itertools = "0.14.0"
 mime = "0.3.17"
 mime_guess = "2.0.5"
 rfd = "0.15.0"
-rodio = { git = "https://github.com/RustAudio/rodio", features = ["integer-decoder"] }
+rodio = { git = "https://github.com/RustAudio/rodio", rev = "8b2432425aabdde1b81729c0430d9318bea5e109", features = ["integer-decoder"] }
 rustfft = "6.2.0"
 
 [dev-dependencies]
