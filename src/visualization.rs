@@ -4,7 +4,7 @@ use iced::Task;
 use itertools::Itertools;
 use rodio::ChannelCount;
 
-use crate::{scope, spectrum, vectorscope, vu_meter};
+use crate::{scope, spectrum, tuner, vectorscope, vu_meter};
 
 pub struct Visualization {}
 
@@ -32,12 +32,20 @@ impl Visualization {
                         points,
                     ))),
                     Task::done(crate::Message::Scope(scope::Message::Buffer(mono.clone()))),
-                    Task::done(crate::Message::Spectrum(spectrum::Message::Buffer(mono))),
+                    Task::done(crate::Message::Spectrum(spectrum::Message::Buffer(
+                        mono.clone(),
+                    ))),
+                    Task::done(crate::Message::Tuner(tuner::Message::Buffer(mono))),
                 ])
             }
-            Message::SampleRateChanged(sample_rate) => Task::done(crate::Message::Spectrum(
-                spectrum::Message::SampleRateChanged(sample_rate),
-            )),
+            Message::SampleRateChanged(sample_rate) => Task::batch([
+                Task::done(crate::Message::Spectrum(
+                    spectrum::Message::SampleRateChanged(sample_rate),
+                )),
+                Task::done(crate::Message::Tuner(tuner::Message::SampleRateChanged(
+                    sample_rate,
+                ))),
+            ]),
         }
     }
 
