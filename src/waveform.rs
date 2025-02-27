@@ -36,7 +36,7 @@ pub enum Message {
     LoadingStarted(usize),
     LoadingFinished,
     Clear,
-    SamplesReady { path: Vec<i16>, generation: usize },
+    SamplesReady { path: Vec<f32>, generation: usize },
     PlayPosition(f32),
     Click,
     CursorMoved(Point),
@@ -47,7 +47,7 @@ pub enum Message {
 #[derive(Default)]
 pub struct Waveform {
     cache: Cache,
-    samples: Vec<i16>,
+    samples: Vec<f32>,
     total_samples: usize,
     play_position: f32,
     command_sender: Option<mpsc::Sender<WaveformCommand>>,
@@ -210,7 +210,7 @@ fn waveform_loading() -> impl Stream<Item = Message> {
                     let mut buffer = Some(Vec::with_capacity(buffer_size));
 
                     'outer: for i in 0..samples_count {
-                        let mut accumulator = 0i32;
+                        let mut accumulator = 0f32;
 
                         for c in 0..decoder.channels() {
                             if let Some(WaveformCommand::StopLoading) =
@@ -221,13 +221,13 @@ fn waveform_loading() -> impl Stream<Item = Message> {
                             }
 
                             accumulator += match decoder.next() {
-                                Some(sample) => sample as i32,
+                                Some(sample) => sample,
                                 None => {
                                     println!(
                                         "No available samples to decode {} - channel {} - {}",
                                         i, c, samples_count
                                     );
-                                    0i32
+                                    0f32
                                 }
                             };
                         }
@@ -235,7 +235,7 @@ fn waveform_loading() -> impl Stream<Item = Message> {
                         buffer
                             .as_mut()
                             .unwrap()
-                            .push((accumulator / decoder.channels() as i32) as i16);
+                            .push(accumulator / decoder.channels() as f32);
 
                         if buffer.as_ref().unwrap().len() == buffer_size {
                             output
@@ -346,9 +346,8 @@ impl canvas::Program<crate::Message> for Waveform {
             if samples_in_block > 0 {
                 // Draw waveform
                 for (index, block) in self.samples.chunks(samples_in_block).enumerate() {
-                    if let Some(max) = block.iter().max() {
-                        let relative = *max as f32 / i16::MAX as f32;
-                        let height = relative * frame.height();
+                    if let Some(max) = block.iter().max_by(|left, right| left.partial_cmp(&right).unwrap()) {
+                        let height = *max * frame.height();
 
                         frame.fill_rectangle(
                             Point::new(index as f32, (frame.height() - height) / 2f32),

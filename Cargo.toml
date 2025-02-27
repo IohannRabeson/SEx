@@ -18,7 +18,7 @@ itertools = "0.14.0"
 mime = "0.3.17"
 mime_guess = "2.0.5"
 rfd = "0.15.0"
-rodio = { git = "https://github.com/RustAudio/rodio", rev = "8b2432425aabdde1b81729c0430d9318bea5e109", features = ["integer-decoder"] }
+rodio = { git = "https://github.com/RustAudio/rodio", rev = "1671d361536a54e4931434e199df3a1ff03663c8" }
 rustfft = "6.2.0"
 
 [dev-dependencies]
