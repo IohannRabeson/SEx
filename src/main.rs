@@ -14,6 +14,7 @@ use rfd::AsyncFileDialog;
 use scope::Scope;
 use search::Search;
 use spectrum::Spectrum;
+use tuner::Tuner;
 use vectorscope::Vectorscope;
 use visualization::Visualization;
 use vu_meter::VuMeter;
@@ -27,6 +28,7 @@ mod icon_provider;
 mod scope;
 mod search;
 mod spectrum;
+mod tuner;
 mod ui;
 mod vectorscope;
 mod visualization;
@@ -54,6 +56,7 @@ enum Message {
     Spectrum(spectrum::Message),
     FileWatcher(file_watcher::Message),
     Visualization(visualization::Message),
+    Tuner(tuner::Message),
     PaneResized(pane_grid::ResizeEvent),
     /// Send this message to show the waveform of a file and play it using Task::done.
     /// Send SelectFile(None) to clear the waveform and stop playing audio.
@@ -72,6 +75,7 @@ enum PaneState {
     Vectorscope,
     Scope,
     Spectrum,
+    Tuner,
 }
 
 struct SEx {
@@ -88,6 +92,7 @@ struct SEx {
     vectorscope: Vectorscope,
     scope: Scope,
     spectrum: Spectrum,
+    tuner: Tuner,
 }
 
 impl SEx {
@@ -123,7 +128,7 @@ impl SEx {
 
         panes.resize(waveform_vu_meter_split, 0.8);
 
-        let (_, vectorscope_scope_split) = panes
+        let (scope_pane, vectorscope_scope_split) = panes
             .split(
                 pane_grid::Axis::Horizontal,
                 vectorscope_pane,
@@ -143,6 +148,12 @@ impl SEx {
 
         panes.resize(spectrum_split, 0.6);
 
+        let (_, tuner_split) = panes
+            .split(pane_grid::Axis::Vertical, scope_pane, PaneState::Tuner)
+            .unwrap();
+
+        panes.resize(tuner_split, 0.8);
+
         (
             Self {
                 audio: Audio::new(),
@@ -158,6 +169,7 @@ impl SEx {
                 vectorscope: Vectorscope::new(),
                 scope: Scope::new(),
                 spectrum: Spectrum::new(),
+                tuner: Tuner::new(),
             },
             Task::perform(select_existing_directory(), Message::OpenDirectory),
         )
@@ -204,6 +216,9 @@ impl SEx {
             Message::Spectrum(message) => {
                 self.spectrum.update(message);
             }
+            Message::Tuner(message) => {
+                self.tuner.update(message);
+            }
             Message::SelectFile(Some(path)) => {
                 if path.is_file() && is_file_contains_audio(&path) {
                     self.audio.play(&path);
@@ -244,6 +259,7 @@ impl SEx {
             PaneState::Vectorscope => self.vectorscope.view().into(),
             PaneState::Scope => self.scope.view().into(),
             PaneState::Spectrum => self.spectrum.view().into(),
+            PaneState::Tuner => self.tuner.view().into(),
         });
 
         pane_grid
