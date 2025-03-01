@@ -4,7 +4,7 @@ use audio::Audio;
 use file_explorer::{FileExplorer, NewEntry};
 use iced::{
     futures::StreamExt,
-    keyboard,
+    keyboard::{self, Key, Modifiers},
     widget::{column, pane_grid, PaneGrid},
     Element, Font, Length, Subscription, Task,
 };
@@ -247,22 +247,41 @@ impl SEx {
 
     fn subscription(&self) -> Subscription<Message> {
         Subscription::batch([
-            keyboard::on_key_press(|key, _modifiers| match key {
-                keyboard::Key::Named(keyboard::key::Named::ArrowDown) => {
-                    Some(Message::FileExplorer(file_explorer::Message::SelectNext))
-                }
-                keyboard::Key::Named(keyboard::key::Named::ArrowUp) => Some(Message::FileExplorer(
-                    file_explorer::Message::SelectPrevious,
-                )),
-                keyboard::Key::Named(keyboard::key::Named::Enter) => Some(Message::FileExplorer(
-                    file_explorer::Message::ExpandCollapseCurrent,
-                )),
-                _ => None,
+            keyboard::on_key_press(match self.view {
+                View::Explorer => Self::on_key_press_explorer,
+                View::Search => Self::on_key_press_search,
             }),
             self.search.subscription(),
             self.waveform.subscription(),
             self.audio.subscription(),
         ])
+    }
+
+    fn on_key_press_explorer(key: Key, _modifiers: Modifiers) -> Option<crate::Message> {
+        match key {
+            keyboard::Key::Named(keyboard::key::Named::ArrowDown) => {
+                Some(Message::FileExplorer(file_explorer::Message::SelectNext))
+            }
+            keyboard::Key::Named(keyboard::key::Named::ArrowUp) => Some(Message::FileExplorer(
+                file_explorer::Message::SelectPrevious,
+            )),
+            keyboard::Key::Named(keyboard::key::Named::Enter) => Some(Message::FileExplorer(
+                file_explorer::Message::ExpandCollapseCurrent,
+            )),
+            _ => None,
+        }
+    }
+
+    fn on_key_press_search(key: Key, _modifiers: Modifiers) -> Option<crate::Message> {
+        match key {
+            keyboard::Key::Named(keyboard::key::Named::ArrowDown) => {
+                Some(Message::Search(search::Message::SelectNext))
+            }
+            keyboard::Key::Named(keyboard::key::Named::ArrowUp) => Some(Message::Search(
+                search::Message::SelectPrevious,
+            )),
+            _ => None,
+        }
     }
 }
 
