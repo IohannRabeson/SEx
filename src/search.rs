@@ -21,6 +21,8 @@ pub enum Message {
     FoundResults(Vec<PathBuf>),
     ClearResults,
     Selected(Option<usize>),
+    SelectPrevious,
+    SelectNext,
 }
 
 pub struct Search {
@@ -131,6 +133,20 @@ impl Search {
                     self.selected
                         .map(|selected| self.results[selected].0.clone()),
                 ));
+            }
+            Message::SelectPrevious => {
+                if let Some(selected) = self.selected {
+                    if selected > 0 {
+                        return Task::done(crate::Message::Search(Message::Selected(Some(selected - 1))))
+                    }
+                }
+            }
+            Message::SelectNext => {
+                if let Some(selected) = self.selected {
+                    if selected + 1 < self.results.len() {
+                        return Task::done(crate::Message::Search(Message::Selected(Some(selected + 1))))
+                    }
+                }
             }
         }
 
