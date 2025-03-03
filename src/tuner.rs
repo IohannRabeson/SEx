@@ -57,19 +57,47 @@ impl Tuner {
 
         if average >= 0.001 {
             if let Some(results) = self.processor.process(&buffer) {
-                let mut max_magnitude = 0f32;
-                let mut max_bin_index = None;
+                let half_fft_size = fft_size / 2;
+                let mut magnitude_spec = Vec::with_capacity(half_fft_size);
 
-                for (index, result) in results.take(fft_size / 2).enumerate() {
+                for (index, result) in results.take(half_fft_size).enumerate() {
                     let frequency = bin_resolution * index as f32;
 
                     if (MIN_FREQ..=MAX_FREQ).contains(&frequency) {
-                        let magnitude = (result.re * result.re + result.im * result.im).sqrt();
+                        magnitude_spec.push((result.re * result.re + result.im * result.im).sqrt());
+                    }
+                    else {
+                        magnitude_spec.push(0f32);
+                    }
+                }
 
-                        if magnitude > max_magnitude {
-                            max_magnitude = magnitude;
-                            max_bin_index = Some(index);
-                        }
+                // Harmonic Product Spectrum
+                const NUM_HPS: usize = 5;
+
+                let mag_spec_ipol = magnitude_spec.clone();
+                
+                for i in 0..NUM_HPS {
+                    let new_len = (magnitude_spec.len() as f64 / (i + 1) as f64).ceil() as usize;
+                    let tmp_hps_spec: Vec<f32> = magnitude_spec[..new_len]
+                        .iter()
+                        .zip(mag_spec_ipol.iter().step_by(i + 1))
+                        .map(|(a, b)| a * b)
+                        .collect();
+
+                    if tmp_hps_spec.iter().all(|&x| x == 0.0) {
+                        break;
+                    }
+
+                    magnitude_spec = tmp_hps_spec;
+                }
+
+                let mut max_bin_index = None;
+                let mut max_mag = 0f32;
+
+                for (index, magnitude) in magnitude_spec.iter().enumerate() {
+                    if magnitude > &max_mag {
+                        max_mag = *magnitude;
+                        max_bin_index = Some(index);
                     }
                 }
 
