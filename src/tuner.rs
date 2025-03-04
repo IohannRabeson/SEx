@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use iced::{
     mouse,
     widget::{
@@ -14,14 +16,15 @@ const MAX_FREQ: f32 = 10000.0;
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    Buffer(Vec<f32>),
+    Buffer(Arc<Vec<f32>>),
     SampleRateChanged(usize),
+    SampleSelectionChanged,
 }
 
 pub struct Tuner {
     display: String,
     sample_rate: usize,
-    processor: FftProcessor<8192>,
+    processor: FftProcessor<16384>,
 }
 
 impl Tuner {
@@ -46,10 +49,13 @@ impl Tuner {
             Message::SampleRateChanged(sample_rate) => {
                 self.sample_rate = sample_rate;
             }
+            Message::SampleSelectionChanged => {
+                self.processor.reset();
+            }
         }
     }
 
-    fn process_buffer(&mut self, buffer: Vec<f32>) {
+    fn process_buffer(&mut self, buffer: Arc<Vec<f32>>) {
         let fft_size = self.processor.fft_size();
         let bin_resolution = self.sample_rate as f32 / fft_size as f32;
 
