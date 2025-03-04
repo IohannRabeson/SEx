@@ -160,15 +160,14 @@ impl SEx {
 
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::OpenDirectory(path) => {
-                if let Some(path) = path {
+            Message::OpenDirectory(path) => match path {
+                Some(path) => {
                     assert!(path.is_dir());
-
                     self.search.set_root_path(path.clone());
-
                     return self.explorer.set_root_path(&path);
                 }
-            }
+                None => return window::get_latest().and_then(window::close),
+            },
             Message::FileExplorer(message) => {
                 return self.explorer.update(message, &self.icon_provider);
             }
