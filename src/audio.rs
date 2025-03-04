@@ -258,7 +258,7 @@ mod details {
             self.sender
                 .try_send(Message::Visualization(visualization::Message::AudioBuffer(
                     self.source.channels(),
-                    self.buffer.iter().map(|sample| *sample).collect(),
+                    self.buffer.to_vec(),
                 )))
                 .unwrap();
 
