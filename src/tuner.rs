@@ -16,12 +16,13 @@ const MAX_FREQ: f32 = 10000.0;
 pub enum Message {
     Buffer(Vec<f32>),
     SampleRateChanged(usize),
+    SampleSelectionChanged,
 }
 
 pub struct Tuner {
     display: String,
     sample_rate: usize,
-    processor: FftProcessor<8192>,
+    processor: FftProcessor<16384>,
 }
 
 impl Tuner {
@@ -45,6 +46,9 @@ impl Tuner {
             }
             Message::SampleRateChanged(sample_rate) => {
                 self.sample_rate = sample_rate;
+            }
+            Message::SampleSelectionChanged => {
+                self.processor.reset();
             }
         }
     }

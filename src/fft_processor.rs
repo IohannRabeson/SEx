@@ -27,6 +27,10 @@ impl<const FFT_SIZE: usize> FftProcessor<FFT_SIZE> {
         }
     }
 
+    pub fn reset(&mut self) {
+        self.temporary.clear();
+    }
+
     pub fn process(&mut self, buffer: &[f32]) -> Option<std::slice::Iter<'_, Complex<f32>>> {
         self.temporary.extend(buffer);
 

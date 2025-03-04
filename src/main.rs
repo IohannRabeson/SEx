@@ -223,6 +223,7 @@ impl SEx {
                 if path.is_file() && is_file_contains_audio(&path) {
                     self.audio.play(&path);
                     self.waveform.show(&path);
+                    return Task::done(Message::Visualization(visualization::Message::SampleSelectionChanged));
                 } else {
                     return Task::done(Message::SelectFile(None));
                 }
