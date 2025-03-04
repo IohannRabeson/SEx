@@ -6,7 +6,7 @@ use iced::{
     futures::StreamExt,
     keyboard::{self, Key, Modifiers},
     widget::{column, pane_grid, PaneGrid},
-    Element, Font, Length, Subscription, Task,
+    window, Element, Font, Length, Subscription, Task,
 };
 use icon_provider::IconProvider;
 use rfd::AsyncFileDialog;
@@ -276,9 +276,9 @@ impl SEx {
             keyboard::Key::Named(keyboard::key::Named::ArrowDown) => {
                 Some(Message::Search(search::Message::SelectNext))
             }
-            keyboard::Key::Named(keyboard::key::Named::ArrowUp) => Some(Message::Search(
-                search::Message::SelectPrevious,
-            )),
+            keyboard::Key::Named(keyboard::key::Named::ArrowUp) => {
+                Some(Message::Search(search::Message::SelectPrevious))
+            }
             _ => None,
         }
     }

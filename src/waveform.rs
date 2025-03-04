@@ -123,8 +123,7 @@ impl Waveform {
                 self.play_position = position;
             }
             Message::Click => {
-                if let Some(cursor_position) = self.cursor_position.as_ref()
-                {
+                if let Some(cursor_position) = self.cursor_position.as_ref() {
                     if let Some(bounds) = self.bounds.as_ref() {
                         let position = cursor_position.x / bounds.width;
 
@@ -346,7 +345,10 @@ impl canvas::Program<crate::Message> for Waveform {
             if samples_in_block > 0 {
                 // Draw waveform
                 for (index, block) in self.samples.chunks(samples_in_block).enumerate() {
-                    if let Some(max) = block.iter().max_by(|left, right| left.partial_cmp(&right).unwrap()) {
+                    if let Some(max) = block
+                        .iter()
+                        .max_by(|left, right| left.partial_cmp(&right).unwrap())
+                    {
                         let height = *max * frame.height();
 
                         frame.fill_rectangle(
