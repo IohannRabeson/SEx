@@ -77,7 +77,7 @@ impl Tuner {
                     }
                 }
 
-                // Harmonic Product Spectrum
+                // Harmonic Product Spectrum (https://www.chciken.com/digital/signal/processing/2020/05/13/guitar-tuner.html#dft)
                 const NUM_HPS: usize = 5;
 
                 let mag_spec_ipol = magnitude_spec.clone();
