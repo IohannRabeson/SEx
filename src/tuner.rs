@@ -59,9 +59,9 @@ impl Tuner {
         let fft_size = self.processor.fft_size();
         let bin_resolution = self.sample_rate as f32 / fft_size as f32;
 
-        let average = average(&buffer);
+        let average = compute_signal_power(&buffer);
 
-        if average >= 0.001 {
+        if average >= 1e-6 {
             if let Some(results) = self.processor.process(&buffer) {
                 let half_fft_size = fft_size / 2;
                 let mut magnitude_spec = Vec::with_capacity(half_fft_size);
@@ -130,10 +130,10 @@ impl Tuner {
     }
 }
 
-fn average(buffer: &[f32]) -> f32 {
-    let sum = buffer.iter().sum::<f32>().abs();
+fn compute_signal_power(samples: &[f32]) -> f32 {
+    let sum_of_squares: f32 = samples.iter().map(|&x| x * x).sum();
 
-    sum / buffer.len() as f32
+    sum_of_squares / samples.len() as f32
 }
 
 fn frequency_to_midi(fm: f32) -> usize {
