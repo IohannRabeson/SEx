@@ -1,6 +1,7 @@
 use std::{
     cell::RefCell,
     collections::{BTreeMap, VecDeque},
+    ffi::{OsStr, OsString},
     ops::Deref,
     path::{Path, PathBuf},
     rc::{Rc, Weak},
@@ -21,7 +22,7 @@ pub struct FileExplorer {
 impl FileExplorer {
     pub fn set_root_path(&mut self, path: impl AsRef<Path>) -> Task<crate::Message> {
         self.model = Some(FileExplorerModel::new(
-            path.as_ref().to_string_lossy().to_string(),
+            path.as_ref().as_os_str().to_os_string(),
         ));
 
         let root = self.model.as_ref().unwrap().root_id();
@@ -99,6 +100,24 @@ impl FileExplorer {
                     }
                 }
             }
+            Message::Removed(path_buf) => {
+                if let Some(model) = self.model.as_mut() {
+                    if let Some(id) = model.node(&path_buf) {
+                        model.remove(id);
+                    }
+                }
+            }
+            Message::Added(path_buf) => {
+                if let Some(model) = self.model.as_mut() {
+                    if let Some(parent_path) = path_buf.parent() {
+                        if let Some(id) = model.node(parent_path) {
+                            return Task::perform(load_directory_entries(parent_path.to_path_buf()), move |entries| {
+                                crate::Message::FileExplorer(Message::ChildrenLoaded(id, entries))
+                            });
+                        }
+                    }
+                }
+            }
         }
 
         Task::none()
@@ -125,18 +144,29 @@ pub enum Message {
     SelectNext,
     SelectPrevious,
     ExpandCollapseCurrent,
+    Removed(PathBuf),
+    Added(PathBuf),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NewEntry {
     Directory {
         path: PathBuf,
-        path_component: String,
+        path_component: OsString,
     },
     File {
         path: PathBuf,
-        path_component: String,
+        path_component: OsString,
     },
+}
+
+impl NewEntry {
+    pub fn path_component(&self) -> &OsStr {
+        match self {
+            NewEntry::Directory { path_component, .. } => path_component,
+            NewEntry::File { path_component, .. } => path_component,
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -187,7 +217,12 @@ fn make_selectable_part(model: &FileExplorerModel, id: NodeId) -> Element<crate:
     let select_message = crate::Message::FileExplorer(Message::Select(Some(id)));
     let icon = model.icon(id);
 
-    ui::file_entry(path_component, select_message, icon, is_selected)
+    ui::file_entry(
+        path_component.into_string().unwrap(),
+        select_message,
+        icon,
+        is_selected,
+    )
 }
 
 fn show_children_control(
@@ -220,20 +255,20 @@ enum Node {
     Root {
         id: NodeId,
         children: Vec<Rc<RefCell<Node>>>,
-        path_component: String,
+        path_component: OsString,
     },
     Directory {
         id: NodeId,
         parent: Weak<RefCell<Node>>,
         children: Vec<Rc<RefCell<Node>>>,
-        path_component: String,
+        path_component: OsString,
         status: ContainerStatus,
         icon: Option<image::Handle>,
     },
     File {
         id: NodeId,
         parent: Weak<RefCell<Node>>,
-        path_component: String,
+        path_component: OsString,
         icon: Option<image::Handle>,
     },
 }
@@ -283,6 +318,29 @@ impl Node {
         }
     }
 
+    fn remove_child(&mut self, id: NodeId) {
+        let remove = |id: NodeId, children: &mut Vec<Rc<RefCell<Node>>>| {
+            if let Some(to_remove) = children
+                .iter()
+                .enumerate()
+                .find(|(_, child)| child.borrow().id() == id)
+                .map(|(index, _)| index)
+            {
+                children.remove(to_remove);
+            }
+        };
+
+        match self {
+            Node::Root { children, .. } => {
+                remove(id, children);
+            }
+            Node::Directory { children, .. } => {
+                remove(id, children);
+            }
+            Node::File { .. } => {}
+        };
+    }
+
     fn children(&self) -> Box<dyn Iterator<Item = NodeId> + '_> {
         match self {
             Node::Root { children, .. } => Box::new(children.iter().map(|node| node.borrow().id())),
@@ -293,12 +351,12 @@ impl Node {
         }
     }
 
-    fn path_component(&self) -> String {
+    fn path_component(&self) -> OsString {
         match self {
-            Node::Root { path_component, .. } => path_component.clone(),
-            Node::Directory { path_component, .. } => path_component.clone(),
-            Node::File { path_component, .. } => path_component.clone(),
-        }
+            Node::Root { path_component, .. } => path_component,
+            Node::Directory { path_component, .. } => path_component,
+            Node::File { path_component, .. } => path_component,
+        }.clone()
     }
 
     fn icon(&self) -> Option<image::Handle> {
@@ -324,7 +382,7 @@ impl Node {
     }
 }
 
-pub struct FileExplorerModel {
+struct FileExplorerModel {
     root: Rc<RefCell<Node>>,
     index: BTreeMap<NodeId, Rc<RefCell<Node>>>,
     linear_index: Vec<(NodeId, usize)>,
@@ -333,7 +391,7 @@ pub struct FileExplorerModel {
 }
 
 impl FileExplorerModel {
-    pub fn new(root_path_component: String) -> Self {
+    pub fn new(root_path_component: OsString) -> Self {
         let mut next_node_id = 0;
         let root_id = NodeId(next_node_id);
         let root = Rc::new(RefCell::new(Node::Root {
@@ -366,22 +424,35 @@ impl FileExplorerModel {
 
     pub fn add(&mut self, parent_id: NodeId, entries: Vec<NewEntry>, icon_provider: &IconProvider) {
         for new_entry in entries {
-            match new_entry {
-                NewEntry::File {
-                    path,
-                    path_component,
-                } => {
-                    let icon = icon_provider.icon(&path).ok();
+            let new_path_component = new_entry.path_component();
 
-                    self.add_leaf(parent_id, path_component, icon);
-                }
-                NewEntry::Directory {
-                    path,
-                    path_component,
-                } => {
-                    let icon = icon_provider.icon(&path).ok();
+            // Check for duplicate
+            if let Some(parent_node) = self.get_node(parent_id).cloned() {
+                let child_with_path_component = parent_node.borrow().children().find(|child|{
+                    let child = self.get_node(*child).unwrap();
 
-                    self.add_container(parent_id, path_component, icon);
+                    child.borrow().path_component() == new_path_component
+                });
+
+                if child_with_path_component.is_none() {
+                    match new_entry {
+                        NewEntry::File {
+                            path,
+                            path_component,
+                        } => {
+                            let icon = icon_provider.icon(&path).ok();
+        
+                            self.add_leaf(parent_id, path_component, icon);
+                        }
+                        NewEntry::Directory {
+                            path,
+                            path_component,
+                        } => {
+                            let icon = icon_provider.icon(&path).ok();
+        
+                            self.add_container(parent_id, path_component, icon);
+                        }
+                    }
                 }
             }
         }
@@ -394,12 +465,12 @@ impl FileExplorerModel {
     fn add_container(
         &mut self,
         parent: NodeId,
-        path_component: String,
+        path_component: OsString,
         icon: Option<image::Handle>,
     ) -> NodeId {
         let new_node_id = NodeId(self.next_node_id);
         self.next_node_id += 1;
-        let parent_node = self.index.get(&parent).unwrap();
+        let parent_node = self.get_node(parent).unwrap();
         let mut new_node = Node::Directory {
             id: new_node_id,
             parent: Rc::downgrade(parent_node),
@@ -424,12 +495,12 @@ impl FileExplorerModel {
     fn add_leaf(
         &mut self,
         parent: NodeId,
-        path_component: String,
+        path_component: OsString,
         icon: Option<image::Handle>,
     ) -> NodeId {
         let new_node_id = NodeId(self.next_node_id);
         self.next_node_id += 1;
-        let parent_node = self.index.get(&parent).unwrap();
+        let parent_node = self.get_node(parent).unwrap();
         let mut new_node = Node::File {
             id: new_node_id,
             parent: Rc::downgrade(parent_node),
@@ -447,6 +518,19 @@ impl FileExplorerModel {
         new_node_id
     }
 
+    pub fn remove(&mut self, id: NodeId) {
+        if let Some(node) = self.get_node(id) {
+            if let Some(parent) = node.borrow().parent() {
+                let parent_node = self.get_node(parent).unwrap();
+
+                parent_node.borrow_mut().remove_child(id);
+            }
+
+            self.index.remove(&id);
+            self.update_linear_index();
+        }
+    }
+
     /// You must call update_linear_index() to ensure the data is up to date.
     pub fn linear_visit(&self) -> impl Iterator<Item = &(NodeId, usize)> {
         self.linear_index.iter()
@@ -460,7 +544,7 @@ impl FileExplorerModel {
         while let Some((current, current_depth)) = stack.pop_front() {
             self.linear_index.push((current, current_depth));
 
-            let current_node = self.index.get(&current).unwrap();
+            let current_node = self.get_node(current).unwrap();
 
             if matches!(current_node.borrow().status(), ContainerStatus::Expanded) {
                 for (index, child_id) in current_node.borrow().children().enumerate() {
@@ -471,7 +555,7 @@ impl FileExplorerModel {
     }
 
     pub fn parent(&self, id: NodeId) -> Option<NodeId> {
-        let node = self.index.get(&id)?;
+        let node = self.get_node(id)?;
 
         node.borrow().parent()
     }
@@ -500,14 +584,14 @@ impl FileExplorerModel {
         self.linear_index.get(index - 1).map(|(id, _)| *id)
     }
 
-    pub fn path_component(&self, id: NodeId) -> Option<String> {
-        let node = self.index.get(&id)?;
+    pub fn path_component(&self, id: NodeId) -> Option<OsString> {
+        let node = self.get_node(id)?;
 
         Some(node.borrow().path_component())
     }
 
     fn icon(&self, id: NodeId) -> Option<image::Handle> {
-        let node = self.index.get(&id)?;
+        let node = self.get_node(id)?;
 
         node.borrow().icon()
     }
@@ -515,19 +599,19 @@ impl FileExplorerModel {
     /// Changing the status changes the structure of the tree so
     /// linear index must be updated using update_linear_index().
     pub fn set_status(&mut self, id: NodeId, status: ContainerStatus) {
-        let node = self.index.get(&id).unwrap();
+        let node = self.get_node(id).unwrap();
 
         node.borrow_mut().set_status(status);
     }
 
     pub fn status(&self, id: NodeId) -> Option<ContainerStatus> {
-        let node = self.index.get(&id)?;
+        let node = self.get_node(id)?;
 
         Some(node.borrow().status())
     }
 
     pub fn expand_collapse(&self, id: NodeId) -> Option<Task<crate::Message>> {
-        if let Some(node) = self.index.get(&id) {
+        if let Some(node) = self.get_node(id) {
             if let Node::Directory { status, .. } = node.borrow().deref() {
                 match status {
                     ContainerStatus::Expanded => {
@@ -576,6 +660,66 @@ impl FileExplorerModel {
         }
 
         result
+    }
+
+    fn get_node(&self, id: NodeId) -> Option<&Rc<RefCell<Node>>> {
+        self.index.get(&id)
+    }
+
+    /// Get the `NodeId` from a `Path`.  
+    /// Mirror of `FileExplorer::path()`.
+    pub fn node(&self, path_buf: &Path) -> Option<NodeId> {
+        let mut path_buf = path_buf.to_path_buf();
+        let mut parent_node_id: Option<NodeId> = None;
+
+        while !path_buf.as_os_str().is_empty() {
+            match parent_node_id {
+                Some(current_node_id) => {
+                    if let Some(parent_node) = self.get_node(current_node_id) {
+                        if let Some(component_path_to_find) = path_buf.components().next().map(|component|component.as_os_str().to_os_string()) {
+                            let mut have_result = false;
+                            for child_id in parent_node.borrow().children() {
+                                if let Some(child) = self.get_node(child_id) {
+                                    if component_path_to_find
+                                        == child.borrow().path_component()
+                                    {
+                                        parent_node_id = Some(child_id);
+                                        let temp_path_buf = path_buf
+                                            .strip_prefix(&component_path_to_find)
+                                            .unwrap()
+                                            .to_path_buf();
+
+                                        path_buf = temp_path_buf;
+                                        have_result = true;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if !have_result {
+                                return None
+                            }
+                        }
+                    }
+                }
+                None => {
+                    let component_path = self
+                        .index
+                        .get(&self.root_id())
+                        .unwrap()
+                        .borrow()
+                        .path_component();
+
+                    path_buf = path_buf
+                        .strip_prefix(&component_path)
+                        .unwrap()
+                        .to_path_buf();
+                    parent_node_id = Some(self.root_id());
+                }
+            }
+        }
+
+        parent_node_id
     }
 
     pub fn set_selection(&mut self, selection: Option<NodeId>) {

@@ -17,6 +17,7 @@ iced = { git = "https://github.com/iced-rs/iced", rev = "beddf49c76f3b43e7b33452
 itertools = "0.14.0"
 mime = "0.3.17"
 mime_guess = "2.0.5"
+notify = "8.0.0"
 rfd = "0.15.0"
 rodio = { git = "https://github.com/RustAudio/rodio", rev = "1671d361536a54e4931434e199df3a1ff03663c8" }
 rustfft = "6.2.0"

@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 
 use audio::Audio;
 use file_explorer::{FileExplorer, NewEntry};
+use file_watcher::FileWatcher;
 use iced::{
     futures::StreamExt,
     keyboard::{self, Key, Modifiers},
@@ -21,6 +22,7 @@ use waveform::Waveform;
 mod audio;
 mod fft_processor;
 mod file_explorer;
+mod file_watcher;
 mod icon_provider;
 mod scope;
 mod search;
@@ -50,6 +52,7 @@ enum Message {
     Vectorscope(vectorscope::Message),
     Scope(scope::Message),
     Spectrum(spectrum::Message),
+    FileWatcher(file_watcher::Message),
     Visualization(visualization::Message),
     PaneResized(pane_grid::ResizeEvent),
     /// Send this message to show the waveform of a file and play it using Task::done.
@@ -74,6 +77,7 @@ enum PaneState {
 struct SEx {
     audio: Audio,
     explorer: FileExplorer,
+    watcher: FileWatcher,
     search: Search,
     view: View,
     panes: pane_grid::State<PaneState>,
@@ -143,6 +147,7 @@ impl SEx {
             Self {
                 audio: Audio::new(),
                 explorer: FileExplorer::default(),
+                watcher: FileWatcher::new(),
                 search: Search::new(),
                 view: View::Explorer,
                 panes,
@@ -164,6 +169,7 @@ impl SEx {
                 Some(path) => {
                     assert!(path.is_dir());
                     self.search.set_root_path(path.clone());
+                    self.watcher.watch(&path);
                     return self.explorer.set_root_path(&path);
                 }
                 None => return window::get_latest().and_then(window::close),
@@ -213,6 +219,9 @@ impl SEx {
             Message::Visualization(message) => {
                 return self.visualization.update(message);
             }
+            Message::FileWatcher(message) => {
+                return self.watcher.update(message);
+            }
         }
 
         Task::none()
@@ -253,6 +262,7 @@ impl SEx {
             self.search.subscription(),
             self.waveform.subscription(),
             self.audio.subscription(),
+            self.watcher.subscription(),
         ])
     }
 
@@ -307,10 +317,7 @@ async fn load_directory_entries(directory_path: PathBuf) -> Vec<NewEntry> {
                     if metadata.is_dir() {
                         results.push(NewEntry::Directory {
                             path: entry.path().into(),
-                            path_component: entry
-                                .file_name()
-                                .into_string()
-                                .unwrap_or_else(|_| "<conversion error>".to_owned()),
+                            path_component: entry.file_name(),
                         });
                     } else if metadata.is_file() {
                         let path: PathBuf = entry.path().into();
@@ -318,10 +325,7 @@ async fn load_directory_entries(directory_path: PathBuf) -> Vec<NewEntry> {
                         if is_file_contains_audio(&path) {
                             results.push(NewEntry::File {
                                 path,
-                                path_component: entry
-                                    .file_name()
-                                    .into_string()
-                                    .unwrap_or_else(|_| "<conversion error>".to_owned()),
+                                path_component: entry.file_name(),
                             });
                         }
                     }
