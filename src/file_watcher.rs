@@ -6,7 +6,7 @@ use iced::{
 };
 use notify::Watcher;
 
-use crate::file_watcher;
+use crate::{file_explorer, file_watcher};
 
 pub enum Command {
     ResetRootPath(PathBuf),
@@ -44,7 +44,31 @@ impl FileWatcher {
             }
             Message::Notify(event) => {
                 println!("{:?}", event);
-                // TODO: process event here
+                match event.kind {
+                    notify::EventKind::Create(_) => {
+                        return Task::batch(event.paths.iter().map(|path| {
+                            Task::done(crate::Message::FileExplorer(
+                                file_explorer::Message::Added(path.clone()),
+                            ))
+                        }))
+                    }
+                    notify::EventKind::Remove(_) => {
+                        return Task::batch(event.paths.iter().map(|path| {
+                            Task::done(crate::Message::FileExplorer(
+                                file_explorer::Message::Removed(path.clone()),
+                            ))
+                        }))
+                    }
+                    notify::EventKind::Modify(notify::event::ModifyKind::Name(notify::event::RenameMode::Any)) => {
+                        return Task::batch(event.paths.iter().map(|path|{
+                            match path.exists() {
+                                true => Task::done(crate::Message::FileExplorer(file_explorer::Message::Added(path.clone()))),
+                                false => Task::done(crate::Message::FileExplorer(file_explorer::Message::Removed(path.clone())))
+                            }
+                        }))
+                    }
+                    _ => ()
+                }
             }
         }
         Task::none()

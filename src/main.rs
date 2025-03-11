@@ -317,10 +317,7 @@ async fn load_directory_entries(directory_path: PathBuf) -> Vec<NewEntry> {
                     if metadata.is_dir() {
                         results.push(NewEntry::Directory {
                             path: entry.path().into(),
-                            path_component: entry
-                                .file_name()
-                                .into_string()
-                                .unwrap_or_else(|_| "<conversion error>".to_owned()),
+                            path_component: entry.file_name(),
                         });
                     } else if metadata.is_file() {
                         let path: PathBuf = entry.path().into();
@@ -328,10 +325,7 @@ async fn load_directory_entries(directory_path: PathBuf) -> Vec<NewEntry> {
                         if is_file_contains_audio(&path) {
                             results.push(NewEntry::File {
                                 path,
-                                path_component: entry
-                                    .file_name()
-                                    .into_string()
-                                    .unwrap_or_else(|_| "<conversion error>".to_owned()),
+                                path_component: entry.file_name(),
                             });
                         }
                     }
