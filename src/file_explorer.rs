@@ -111,9 +111,14 @@ impl FileExplorer {
                 if let Some(model) = self.model.as_mut() {
                     if let Some(parent_path) = path_buf.parent() {
                         if let Some(id) = model.node(parent_path) {
-                            return Task::perform(load_directory_entries(parent_path.to_path_buf()), move |entries| {
-                                crate::Message::FileExplorer(Message::ChildrenLoaded(id, entries))
-                            });
+                            return Task::perform(
+                                load_directory_entries(parent_path.to_path_buf()),
+                                move |entries| {
+                                    crate::Message::FileExplorer(Message::ChildrenLoaded(
+                                        id, entries,
+                                    ))
+                                },
+                            );
                         }
                     }
                 }
@@ -356,7 +361,8 @@ impl Node {
             Node::Root { path_component, .. } => path_component,
             Node::Directory { path_component, .. } => path_component,
             Node::File { path_component, .. } => path_component,
-        }.clone()
+        }
+        .clone()
     }
 
     fn icon(&self) -> Option<image::Handle> {
@@ -428,7 +434,7 @@ impl FileExplorerModel {
 
             // Check for duplicate
             if let Some(parent_node) = self.get_node(parent_id).cloned() {
-                let child_with_path_component = parent_node.borrow().children().find(|child|{
+                let child_with_path_component = parent_node.borrow().children().find(|child| {
                     let child = self.get_node(*child).unwrap();
 
                     child.borrow().path_component() == new_path_component
@@ -441,7 +447,7 @@ impl FileExplorerModel {
                             path_component,
                         } => {
                             let icon = icon_provider.icon(&path).ok();
-        
+
                             self.add_leaf(parent_id, path_component, icon);
                         }
                         NewEntry::Directory {
@@ -449,7 +455,7 @@ impl FileExplorerModel {
                             path_component,
                         } => {
                             let icon = icon_provider.icon(&path).ok();
-        
+
                             self.add_container(parent_id, path_component, icon);
                         }
                     }
@@ -676,13 +682,15 @@ impl FileExplorerModel {
             match parent_node_id {
                 Some(current_node_id) => {
                     if let Some(parent_node) = self.get_node(current_node_id) {
-                        if let Some(component_path_to_find) = path_buf.components().next().map(|component|component.as_os_str().to_os_string()) {
+                        if let Some(component_path_to_find) = path_buf
+                            .components()
+                            .next()
+                            .map(|component| component.as_os_str().to_os_string())
+                        {
                             let mut have_result = false;
                             for child_id in parent_node.borrow().children() {
                                 if let Some(child) = self.get_node(child_id) {
-                                    if component_path_to_find
-                                        == child.borrow().path_component()
-                                    {
+                                    if component_path_to_find == child.borrow().path_component() {
                                         parent_node_id = Some(child_id);
                                         let temp_path_buf = path_buf
                                             .strip_prefix(&component_path_to_find)
@@ -697,7 +705,7 @@ impl FileExplorerModel {
                             }
 
                             if !have_result {
-                                return None
+                                return None;
                             }
                         }
                     }
