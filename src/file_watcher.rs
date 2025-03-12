@@ -47,9 +47,9 @@ impl FileWatcher {
                 match event.kind {
                     notify::EventKind::Create(_) => {
                         return Task::batch(event.paths.iter().map(|path| {
-                            Task::done(crate::Message::FileExplorer(
-                                file_explorer::Message::Added(path.clone()),
-                            ))
+                            Task::done(crate::Message::FileExplorer(file_explorer::Message::Added(
+                                path.clone(),
+                            )))
                         }))
                     }
                     notify::EventKind::Remove(_) => {
@@ -59,15 +59,37 @@ impl FileWatcher {
                             ))
                         }))
                     }
-                    notify::EventKind::Modify(notify::event::ModifyKind::Name(notify::event::RenameMode::Any)) => {
-                        return Task::batch(event.paths.iter().map(|path|{
-                            match path.exists() {
-                                true => Task::done(crate::Message::FileExplorer(file_explorer::Message::Added(path.clone()))),
-                                false => Task::done(crate::Message::FileExplorer(file_explorer::Message::Removed(path.clone())))
-                            }
+                    notify::EventKind::Modify(notify::event::ModifyKind::Name(
+                        notify::event::RenameMode::Any,
+                    )) => {
+                        return Task::batch(event.paths.iter().map(|path| match path.exists() {
+                            true => Task::done(crate::Message::FileExplorer(
+                                file_explorer::Message::Added(path.clone()),
+                            )),
+                            false => Task::done(crate::Message::FileExplorer(
+                                file_explorer::Message::Removed(path.clone()),
+                            )),
                         }))
                     }
-                    _ => ()
+                    notify::EventKind::Modify(notify::event::ModifyKind::Name(
+                        notify::event::RenameMode::From,
+                    )) => {
+                        return Task::batch(event.paths.iter().map(|path| {
+                            Task::done(crate::Message::FileExplorer(
+                                file_explorer::Message::Removed(path.clone()),
+                            ))
+                        }))
+                    }
+                    notify::EventKind::Modify(notify::event::ModifyKind::Name(
+                        notify::event::RenameMode::To,
+                    )) => {
+                        return Task::batch(event.paths.iter().map(|path| {
+                            Task::done(crate::Message::FileExplorer(file_explorer::Message::Added(
+                                path.clone(),
+                            )))
+                        }))
+                    }
+                    _ => (),
                 }
             }
         }
