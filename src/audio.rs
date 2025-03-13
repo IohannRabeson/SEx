@@ -14,6 +14,7 @@ use iced::{
     },
     Subscription, Task,
 };
+use log::debug;
 use rodio::{mixer::Mixer, OutputStream, Source};
 
 use crate::{visualization, waveform};
@@ -105,7 +106,7 @@ impl Audio {
 
 fn run_audio_player() -> impl Stream<Item = crate::Message> {
     iced::stream::channel(64, async move |mut output| {
-        println!("Start audio subscription");
+        debug!("Start audio subscription");
         let (command_sender, mut command_receiver) = mpsc::channel::<AudioCommand>(8);
 
         let mut sink = None;
@@ -128,7 +129,7 @@ fn run_audio_player() -> impl Stream<Item = crate::Message> {
         while let Some(command) = command_receiver.next().await {
             match command {
                 AudioCommand::Initialize(new_mixer) => {
-                    println!("Create audio sink");
+                    debug!("Create audio sink");
                     mixer = Some(new_mixer);
                 }
                 AudioCommand::Play(path) => {

@@ -4,6 +4,7 @@ use iced::{
     futures::{channel::mpsc, Stream, StreamExt},
     Subscription, Task,
 };
+use log::{debug, trace};
 use notify::Watcher;
 
 use crate::{file_explorer, file_watcher};
@@ -43,7 +44,7 @@ impl FileWatcher {
                 self.command_sender = Some(sender);
             }
             Message::Notify(event) => {
-                println!("{:?}", event);
+                trace!("{:?}", event);
                 match event.kind {
                     notify::EventKind::Create(_) => {
                         return Task::batch(event.paths.iter().map(|path| {
@@ -106,7 +107,7 @@ fn run_watcher() -> impl Stream<Item = crate::Message> {
     use iced::futures::SinkExt;
 
     iced::stream::channel(4, async move |mut output| {
-        println!("Start file watcher subscription");
+        debug!("Start file watcher subscription");
         let (command_sender, mut command_receiver) = mpsc::channel::<Command>(8);
 
         output

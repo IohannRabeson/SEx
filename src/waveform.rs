@@ -15,6 +15,7 @@ use iced::{
     },
     window, Element, Event, Length, Point, Rectangle, Renderer, Size, Subscription, Task, Theme,
 };
+use log::debug;
 use rodio::{Decoder, Source};
 
 pub enum WaveformCommand {
@@ -94,7 +95,7 @@ impl Waveform {
     pub fn update(&mut self, message: Message) -> Task<crate::Message> {
         match message {
             Message::Initialized(command_sender) => {
-                println!("Waveform initialized");
+                debug!("Waveform initialized");
                 self.command_sender = Some(command_sender);
             }
             Message::LoadingStarted(samples_count) => {
@@ -102,10 +103,10 @@ impl Waveform {
                 self.samples.reserve(samples_count);
                 self.total_samples = samples_count;
 
-                println!("Loading started: {samples_count}");
+                debug!("Loading started: {samples_count}");
             }
             Message::LoadingFinished => {
-                println!("Loading finished");
+                debug!("Loading finished");
             }
             Message::SamplesReady {
                 path: mut samples,
@@ -203,7 +204,7 @@ fn waveform_loading() -> impl Stream<Item = Message> {
                 } => {
                     let loading_start_time = Instant::now();
                     let buffer_size = sample_rate;
-                    println!("Decoding, buffer size: {}", buffer_size);
+                    debug!("Decoding, buffer size: {}", buffer_size);
                     // It's an option because I need to take the buffer when it is filled to avoid cloning it.
                     // It's safe to unwrap it because there always a buffer while decoding.
                     let mut buffer = Some(Vec::with_capacity(buffer_size));
@@ -222,7 +223,7 @@ fn waveform_loading() -> impl Stream<Item = Message> {
                             accumulator += match decoder.next() {
                                 Some(sample) => sample,
                                 None => {
-                                    println!(
+                                    debug!(
                                         "No available samples to decode {} - channel {} - {}",
                                         i, c, samples_count
                                     );
@@ -262,7 +263,7 @@ fn waveform_loading() -> impl Stream<Item = Message> {
                     let duration = Instant::now() - loading_start_time;
                     let duration = duration.as_millis();
 
-                    println!(
+                    debug!(
                         "Loading time: {} ms {} samples / ms",
                         duration,
                         if duration == 0 {
@@ -292,7 +293,7 @@ async fn process_command(command: WaveformCommand, output: &mut mpsc::Sender<Mes
                         const DIVISOR: u128 = 1_000_000_000;
                         let samples_count = samples_count / DIVISOR;
 
-                        println!("Sample rate: {}", decoder.sample_rate());
+                        debug!("Sample rate: {}", decoder.sample_rate());
 
                         output
                             .send(Message::LoadingStarted(samples_count as usize))

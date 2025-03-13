@@ -8,6 +8,7 @@ use iced::{
     widget::{image, scrollable, text_input, Column},
     Element, Length, Subscription, Task,
 };
+use log::{debug, trace};
 use std::path::PathBuf;
 
 use crate::{icon_provider::IconProvider, is_file_contains_audio, ui, View};
@@ -86,7 +87,7 @@ impl Search {
         match message {
             Message::Initialized(command_sender) => {
                 self.command_sender = Some(command_sender);
-                println!("Search initialized");
+                debug!("Search initialized");
             }
             Message::SearchTextChanged(text) => {
                 self.input = text.clone();
@@ -116,12 +117,12 @@ impl Search {
                 }));
             }
             Message::SearchStarted => {
-                println!("Search started");
+                debug!("Search started");
                 self.results.clear();
                 *view = View::Search;
             }
             Message::SearchFinished => {
-                println!("Search finished");
+                debug!("Search finished");
             }
             Message::ClearResults => {
                 self.results.clear();
@@ -236,7 +237,7 @@ fn search_new() -> impl Stream<Item = Message> {
         loop {
             match &mut state {
                 SearchState::Idle => {
-                    println!("Waiting for search command");
+                    debug!("Waiting for search command");
                     if let Some(SearchCommand::Search(searched, root_directory, options)) =
                         command_receiver.next().await
                     {
@@ -247,7 +248,7 @@ fn search_new() -> impl Stream<Item = Message> {
                     if let Some(command) = command_receiver.next().now_or_never().flatten() {
                         match command {
                             SearchCommand::Search(searched, root_directory, options) => {
-                                println!("Search {}", searched);
+                                trace!("Search {}", searched);
 
                                 state =
                                     SearchState::Search(searched, vec![root_directory], options);
@@ -256,7 +257,7 @@ fn search_new() -> impl Stream<Item = Message> {
                             SearchCommand::Clear => {
                                 state = SearchState::Idle;
                                 output.send(Message::ClearResults).await.unwrap();
-                                println!("Search cleared");
+                                debug!("Search cleared");
                             }
                         }
                     } else if directories_to_visit.is_empty() {
