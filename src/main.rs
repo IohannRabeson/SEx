@@ -10,6 +10,7 @@ use iced::{
     window, Element, Font, Length, Subscription, Task,
 };
 use icon_provider::IconProvider;
+use log::debug;
 use rfd::AsyncFileDialog;
 use scope::Scope;
 use search::Search;
@@ -33,12 +34,26 @@ mod visualization;
 mod vu_meter;
 mod waveform;
 
-fn main() -> iced::Result {
+#[derive(thiserror::Error, Debug)]
+enum AppError {
+    #[error(transparent)]
+    SetLogger(#[from] log::SetLoggerError),
+    #[error(transparent)]
+    OpenLogFile(#[from] std::io::Error),
+    #[error(transparent)]
+    Iced(#[from] iced::Error),
+}
+
+fn main() -> Result<(), AppError> {
+    setup_logger()?;
+
     iced::application("SEx - Sample Explorer", SEx::update, SEx::view)
         .font(include_bytes!("../fonts/SF-Pro.ttf").as_slice())
         .default_font(Font::with_name("SF Pro"))
         .subscription(SEx::subscription)
-        .run_with(SEx::new)
+        .run_with(SEx::new)?;
+
+    Ok(())
 }
 
 #[derive(Debug, Clone)]
@@ -168,6 +183,7 @@ impl SEx {
             Message::OpenDirectory(path) => match path {
                 Some(path) => {
                     assert!(path.is_dir());
+                    debug!("Open directory {}", path.display());
                     self.search.set_root_path(path.clone());
                     self.watcher.watch(&path);
                     return self.explorer.set_root_path(&path);
@@ -337,4 +353,33 @@ async fn load_directory_entries(directory_path: PathBuf) -> Vec<NewEntry> {
     results.sort();
 
     results
+}
+
+fn setup_logger() -> Result<(), AppError> {
+    fern::Dispatch::new()
+        // Perform allocation-free log formatting
+        .format(|out, message, record| {
+            out.finish(format_args!(
+                "[{} {} {}] {}",
+                humantime::format_rfc3339(std::time::SystemTime::now()),
+                record.level(),
+                record.target(),
+                message
+            ))
+        })
+        // Add blanket level filter -
+        .level(log::LevelFilter::Off)
+        .level_for("sex", log::LevelFilter::Debug)
+        // Output to stdout, files, and other Dispatch configurations
+        .chain(std::io::stdout())
+        .chain(
+            std::fs::OpenOptions::new()
+                .write(true)
+                .create(true)
+                .open("output.log")?,
+        )
+        // Apply globally
+        .apply()?;
+
+    Ok(())
 }
