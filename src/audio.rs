@@ -2,7 +2,6 @@ use std::{
     fs::File,
     io::BufReader,
     path::{Path, PathBuf},
-    sync::Arc,
     time::Duration,
 };
 
@@ -27,7 +26,7 @@ pub enum Message {
 }
 
 pub enum AudioCommand {
-    Initialize(Arc<Mixer>),
+    Initialize(Mixer),
     Play(PathBuf),
     Stop,
     QueryPosition,
@@ -36,19 +35,16 @@ pub enum AudioCommand {
 
 pub struct Audio {
     command_sender: Option<Sender<AudioCommand>>,
-    _output_stream: OutputStream,
-    mixer: Arc<Mixer>,
+    output_stream: OutputStream,
 }
 
 impl Audio {
     pub fn new() -> Self {
         let output_stream = rodio::OutputStreamBuilder::open_default_stream().unwrap();
-        let mixer = output_stream.mixer();
 
         Self {
             command_sender: None,
-            _output_stream: output_stream,
-            mixer,
+            output_stream,
         }
     }
 
@@ -56,7 +52,7 @@ impl Audio {
         match message {
             Message::Initialize(command_sender) => {
                 self.command_sender = Some(command_sender);
-                self.send_command(AudioCommand::Initialize(self.mixer.clone()));
+                self.send_command(AudioCommand::Initialize(self.output_stream.mixer().clone()));
             }
             Message::QueryPosition => {
                 self.send_command_if_possible(AudioCommand::QueryPosition);
