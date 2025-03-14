@@ -5,13 +5,13 @@ use iced::{
         stream::Stream,
         FutureExt, SinkExt, StreamExt,
     },
-    widget::{image, scrollable, text_input, Column},
+    widget::{scrollable, svg, text_input, Column},
     Element, Length, Subscription, Task,
 };
 use log::{debug, trace};
 use std::path::PathBuf;
 
-use crate::{icon_provider::IconProvider, is_file_contains_audio, ui, View};
+use crate::{is_file_contains_audio, ui, View};
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -30,13 +30,14 @@ pub struct Search {
     input: String,
     command_sender: Option<Sender<SearchCommand>>,
     root_path: PathBuf,
-    results: Vec<(PathBuf, Option<image::Handle>)>,
+    results: Vec<(PathBuf, Option<svg::Handle>)>,
     search_options: SearchOptions,
     selected: Option<usize>,
+    directory_icon: svg::Handle,
 }
 
 impl Search {
-    pub fn new() -> Self {
+    pub fn new(directory_icon: svg::Handle) -> Self {
         Self {
             input: String::new(),
             command_sender: None,
@@ -44,6 +45,7 @@ impl Search {
             results: Vec::new(),
             search_options: SearchOptions::default(),
             selected: None,
+            directory_icon
         }
     }
 
@@ -82,7 +84,6 @@ impl Search {
         &mut self,
         message: Message,
         view: &mut View,
-        icon_provider: &IconProvider,
     ) -> Task<crate::Message> {
         match message {
             Message::Initialized(command_sender) => {
@@ -111,7 +112,9 @@ impl Search {
             }
             Message::FoundResults(results) => {
                 self.results.extend(results.into_iter().map(|path| {
-                    let icon = icon_provider.icon(&path).ok();
+                    let icon = if path.is_dir() { 
+                        Some(self.directory_icon.clone())
+                    } else { None };
 
                     (path, icon)
                 }));

@@ -1,17 +1,17 @@
 use iced::{
     alignment::Vertical,
-    widget::{canvas::Stroke, container, image, text::Wrapping, MouseArea, Row},
+    widget::{canvas::Stroke, container, svg, text::Wrapping, MouseArea, Row},
     Color, Element, Padding, Theme,
 };
 
-use crate::Message;
+use crate::{ui, Message};
 
-pub(crate) const ICON_SIZE: u32 = 20;
+pub(crate) const ICON_SIZE: u32 = 18;
 
 pub fn file_entry<'a>(
     text: impl ToString,
     select_message: Message,
-    icon: Option<image::Handle>,
+    icon: Option<svg::Handle>,
     selected: bool,
 ) -> Element<'a, Message> {
     const FONT_SIZE: u32 = 14;
@@ -20,12 +20,14 @@ pub fn file_entry<'a>(
 
     row = row.push_maybe(icon.map(|handle| {
         container(
-            image(handle)
-                .filter_method(image::FilterMethod::Nearest)
+            svg(handle)
+                .style(|theme: &Theme, _status| {
+                    svg::Style { color: Some(ui::main_color(theme)) }
+                })
                 .width(ICON_SIZE)
                 .height(ICON_SIZE),
         )
-        .padding(Padding::from([0, 4]))
+        .padding(Padding{ top: 0., right: 4., bottom: 0., left: 0. })
     }));
     row = row.push(
         iced::widget::text(text.to_string())
@@ -34,7 +36,7 @@ pub fn file_entry<'a>(
     );
     row = row.align_y(Vertical::Center);
 
-    let mut selectable_part = container(row);
+    let mut selectable_part = container(row).padding(Padding{ top: 0., right: 4., bottom: 0., left: 4. });
 
     if selected {
         selectable_part = selectable_part.style(selected_style);
@@ -48,7 +50,7 @@ pub fn file_entry<'a>(
 fn selected_style(theme: &Theme) -> container::Style {
     container::Style {
         background: Some(iced::Background::Color(
-            theme.extended_palette().primary.weak.color,
+            theme.extended_palette().secondary.weak.color,
         )),
         ..Default::default()
     }
