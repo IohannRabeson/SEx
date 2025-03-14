@@ -6,10 +6,9 @@ use file_watcher::FileWatcher;
 use iced::{
     futures::StreamExt,
     keyboard::{self, Key, Modifiers},
-    widget::{column, pane_grid, PaneGrid},
+    widget::{column, pane_grid, svg, PaneGrid},
     window, Element, Font, Length, Subscription, Task, Theme,
 };
-use icon_provider::IconProvider;
 use log::debug;
 use rfd::AsyncFileDialog;
 use scope::Scope;
@@ -24,7 +23,6 @@ mod audio;
 mod fft_processor;
 mod file_explorer;
 mod file_watcher;
-mod icon_provider;
 mod scope;
 mod search;
 mod spectrum;
@@ -99,7 +97,6 @@ struct SEx {
     panes: pane_grid::State<PaneState>,
     waveform: Waveform,
     vu_meter: VuMeter,
-    icon_provider: IconProvider,
     visualization: Visualization,
     vectorscope: Vectorscope,
     scope: Scope,
@@ -109,6 +106,7 @@ struct SEx {
 
 impl SEx {
     fn new() -> (Self, Task<Message>) {
+        let directory_icon = svg::Handle::from_memory(include_bytes!("../svg/icons8-folder2.svg"));
         let (mut panes, waveform_pane) = pane_grid::State::new(PaneState::Waveform);
 
         let (_, explorer_waveform_split) = panes
@@ -163,13 +161,12 @@ impl SEx {
         (
             Self {
                 audio: Audio::new(),
-                explorer: FileExplorer::default(),
+                explorer: FileExplorer::new(directory_icon.clone()),
                 watcher: FileWatcher::new(),
-                search: Search::new(),
+                search: Search::new(directory_icon.clone()),
                 view: View::Explorer,
                 panes,
                 waveform: Waveform::default(),
-                icon_provider: IconProvider::default(),
                 vu_meter: VuMeter::new(),
                 visualization: Visualization::new(),
                 vectorscope: Vectorscope::new(),
@@ -194,12 +191,12 @@ impl SEx {
                 None => return window::get_latest().and_then(window::close),
             },
             Message::FileExplorer(message) => {
-                return self.explorer.update(message, &self.icon_provider);
+                return self.explorer.update(message);
             }
             Message::Search(message) => {
                 return self
                     .search
-                    .update(message, &mut self.view, &self.icon_provider);
+                    .update(message, &mut self.view);
             }
             Message::PaneResized(pane_grid::ResizeEvent { split, ratio }) => {
                 self.panes.resize(split, ratio);
@@ -339,7 +336,6 @@ async fn load_directory_entries(directory_path: PathBuf) -> Vec<NewEntry> {
                 if let Ok(metadata) = entry.metadata().await {
                     if metadata.is_dir() {
                         results.push(NewEntry::Directory {
-                            path: entry.path().into(),
                             path_component: entry.file_name(),
                         });
                     } else if metadata.is_file() {
@@ -347,7 +343,7 @@ async fn load_directory_entries(directory_path: PathBuf) -> Vec<NewEntry> {
 
                         if is_file_contains_audio(&path) {
                             results.push(NewEntry::File {
-                                path,
+
                                 path_component: entry.file_name(),
                             });
                         }

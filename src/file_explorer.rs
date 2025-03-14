@@ -8,18 +8,25 @@ use std::{
 };
 
 use iced::{
-    widget::{image, row, scrollable, text, Column, MouseArea, Space},
+    widget::{row, scrollable, svg, text, Column, MouseArea, Space},
     Element, Length, Task,
 };
 
-use crate::{icon_provider::IconProvider, load_directory_entries, ui};
+use crate::{load_directory_entries, ui};
 
-#[derive(Default)]
 pub struct FileExplorer {
     model: Option<FileExplorerModel>,
+    directory_icon: svg::Handle,
 }
 
 impl FileExplorer {
+    pub fn new(directory_icon: svg::Handle) -> Self {
+        Self {
+            model: None,
+            directory_icon,
+        }
+    }
+
     pub fn set_root_path(&mut self, path: impl AsRef<Path>) -> Task<crate::Message> {
         self.model = Some(FileExplorerModel::new(
             path.as_ref().as_os_str().to_os_string(),
@@ -34,13 +41,12 @@ impl FileExplorer {
     }
 
     pub fn view(&self) -> Element<crate::Message> {
-        self::view(self.model.as_ref())
+        self::view(self.model.as_ref(), self.directory_icon.clone())
     }
 
     pub fn update(
         &mut self,
         message: Message,
-        icon_provider: &IconProvider,
     ) -> Task<crate::Message> {
         match message {
             Message::RequestLoad(id, path) => {
@@ -50,7 +56,7 @@ impl FileExplorer {
             }
             Message::ChildrenLoaded(parent_id, new_entries) => {
                 if let Some(model) = self.model.as_mut() {
-                    model.add(parent_id, new_entries, icon_provider);
+                    model.add(parent_id, new_entries);
                     model.update_linear_index();
                 }
             }
@@ -156,11 +162,9 @@ pub enum Message {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NewEntry {
     Directory {
-        path: PathBuf,
         path_component: OsString,
     },
     File {
-        path: PathBuf,
         path_component: OsString,
     },
 }
@@ -185,7 +189,7 @@ pub enum ContainerStatus {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct NodeId(usize);
 
-fn view(tree: Option<&FileExplorerModel>) -> Element<crate::Message> {
+fn view(tree: Option<&FileExplorerModel>, directory_icon: svg::Handle) -> Element<crate::Message> {
     const DEPTH_OFFSET: f32 = 20f32;
 
     let mut main_column = Column::new();
@@ -196,7 +200,7 @@ fn view(tree: Option<&FileExplorerModel>) -> Element<crate::Message> {
                 continue;
             }
             let status = tree.status(*id).unwrap();
-            let selectable_part = make_selectable_part(tree, *id);
+            let selectable_part = make_selectable_part(tree, *id, directory_icon.clone());
             let row = row![
                 Space::new(Length::Fixed(*depth as f32 * DEPTH_OFFSET), Length::Shrink),
                 show_children_control(tree, *id, status),
@@ -216,11 +220,11 @@ fn view(tree: Option<&FileExplorerModel>) -> Element<crate::Message> {
     .into()
 }
 
-fn make_selectable_part(model: &FileExplorerModel, id: NodeId) -> Element<crate::Message> {
+fn make_selectable_part(model: &FileExplorerModel, id: NodeId, directory_icon: svg::Handle) -> Element<crate::Message> {
     let path_component = model.path_component(id).unwrap();
+    let icon = if model.is_directory(id) { Some(directory_icon) } else { None };
     let is_selected = model.selection.is_some_and(|selection| selection == id);
     let select_message = crate::Message::FileExplorer(Message::Select(Some(id)));
-    let icon = model.icon(id);
 
     ui::file_entry(
         path_component.into_string().unwrap(),
@@ -268,13 +272,11 @@ enum Node {
         children: Vec<Rc<RefCell<Node>>>,
         path_component: OsString,
         status: ContainerStatus,
-        icon: Option<image::Handle>,
     },
     File {
         id: NodeId,
         parent: Weak<RefCell<Node>>,
         path_component: OsString,
-        icon: Option<image::Handle>,
     },
 }
 
@@ -365,14 +367,6 @@ impl Node {
         .clone()
     }
 
-    fn icon(&self) -> Option<image::Handle> {
-        match self {
-            Node::Root { .. } => None,
-            Node::Directory { icon, .. } => icon.clone(),
-            Node::File { icon, .. } => icon.clone(),
-        }
-    }
-
     fn status(&self) -> ContainerStatus {
         match self {
             Node::Root { .. } => ContainerStatus::Expanded,
@@ -385,6 +379,10 @@ impl Node {
         if let Node::Directory { status, .. } = self {
             *status = new_status;
         }
+    }
+
+    fn is_directory(&self) -> bool {
+        matches!(self, Node::Directory { .. })
     }
 }
 
@@ -428,7 +426,7 @@ impl FileExplorerModel {
         }
     }
 
-    pub fn add(&mut self, parent_id: NodeId, entries: Vec<NewEntry>, icon_provider: &IconProvider) {
+    pub fn add(&mut self, parent_id: NodeId, entries: Vec<NewEntry>) {
         for new_entry in entries {
             let new_path_component = new_entry.path_component();
 
@@ -443,20 +441,14 @@ impl FileExplorerModel {
                 if child_with_path_component.is_none() {
                     match new_entry {
                         NewEntry::File {
-                            path,
                             path_component,
                         } => {
-                            let icon = icon_provider.icon(&path).ok();
-
-                            self.add_leaf(parent_id, path_component, icon);
+                            self.add_leaf(parent_id, path_component);
                         }
                         NewEntry::Directory {
-                            path,
                             path_component,
                         } => {
-                            let icon = icon_provider.icon(&path).ok();
-
-                            self.add_container(parent_id, path_component, icon);
+                            self.add_container(parent_id, path_component);
                         }
                     }
                 }
@@ -472,7 +464,6 @@ impl FileExplorerModel {
         &mut self,
         parent: NodeId,
         path_component: OsString,
-        icon: Option<image::Handle>,
     ) -> NodeId {
         let new_node_id = NodeId(self.next_node_id);
         self.next_node_id += 1;
@@ -483,7 +474,6 @@ impl FileExplorerModel {
             children: Vec::new(),
             path_component,
             status: ContainerStatus::NotLoaded,
-            icon,
         };
 
         new_node.set_parent(Rc::downgrade(parent_node));
@@ -502,7 +492,6 @@ impl FileExplorerModel {
         &mut self,
         parent: NodeId,
         path_component: OsString,
-        icon: Option<image::Handle>,
     ) -> NodeId {
         let new_node_id = NodeId(self.next_node_id);
         self.next_node_id += 1;
@@ -511,7 +500,6 @@ impl FileExplorerModel {
             id: new_node_id,
             parent: Rc::downgrade(parent_node),
             path_component,
-            icon,
         };
 
         new_node.set_parent(Rc::downgrade(parent_node));
@@ -594,12 +582,6 @@ impl FileExplorerModel {
         let node = self.get_node(id)?;
 
         Some(node.borrow().path_component())
-    }
-
-    fn icon(&self, id: NodeId) -> Option<image::Handle> {
-        let node = self.get_node(id)?;
-
-        node.borrow().icon()
     }
 
     /// Changing the status changes the structure of the tree so
@@ -736,5 +718,13 @@ impl FileExplorerModel {
 
     pub fn selection(&self) -> Option<NodeId> {
         self.selection
+    }
+    
+    pub fn is_directory(&self, id: NodeId) -> bool {
+        if let Some(node) = self.get_node(id) {
+            return node.borrow().is_directory()
+        }
+
+        false
     }
 }
