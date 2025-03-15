@@ -7,7 +7,7 @@ use iced::{
     futures::StreamExt,
     keyboard::{self, Key, Modifiers},
     widget::{column, pane_grid, PaneGrid},
-    window, Element, Font, Length, Subscription, Task,
+    window, Element, Font, Length, Subscription, Task, Theme,
 };
 use icon_provider::IconProvider;
 use log::debug;
@@ -48,6 +48,7 @@ fn main() -> Result<(), AppError> {
     setup_logger()?;
 
     iced::application("SEx - Sample Explorer", SEx::update, SEx::view)
+        .theme(SEx::theme)
         .font(include_bytes!("../fonts/SF-Pro.ttf").as_slice())
         .default_font(Font::with_name("SF Pro"))
         .subscription(SEx::subscription)
@@ -103,6 +104,7 @@ struct SEx {
     vectorscope: Vectorscope,
     scope: Scope,
     spectrum: Spectrum,
+    theme: Theme,
 }
 
 impl SEx {
@@ -173,6 +175,7 @@ impl SEx {
                 vectorscope: Vectorscope::new(),
                 scope: Scope::new(),
                 spectrum: Spectrum::new(),
+                theme: Theme::CatppuccinFrappe,
             },
             Task::perform(select_existing_directory(), Message::OpenDirectory),
         )
@@ -267,6 +270,10 @@ impl SEx {
             .height(Length::Fill)
             .on_resize(8, Message::PaneResized)
             .into()
+    }
+
+    fn theme(&self) -> Theme {
+        self.theme.clone()
     }
 
     fn subscription(&self) -> Subscription<Message> {
