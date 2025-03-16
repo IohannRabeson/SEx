@@ -45,7 +45,7 @@ impl Search {
             results: Vec::new(),
             search_options: SearchOptions::default(),
             selected: None,
-            directory_icon
+            directory_icon,
         }
     }
 
@@ -80,11 +80,7 @@ impl Search {
         scrollable(main_column.width(Length::Fill)).into()
     }
 
-    pub fn update(
-        &mut self,
-        message: Message,
-        view: &mut View,
-    ) -> Task<crate::Message> {
+    pub fn update(&mut self, message: Message, view: &mut View) -> Task<crate::Message> {
         match message {
             Message::Initialized(command_sender) => {
                 self.command_sender = Some(command_sender);
@@ -112,9 +108,11 @@ impl Search {
             }
             Message::FoundResults(results) => {
                 self.results.extend(results.into_iter().map(|path| {
-                    let icon = if path.is_dir() { 
+                    let icon = if path.is_dir() {
                         Some(self.directory_icon.clone())
-                    } else { None };
+                    } else {
+                        None
+                    };
 
                     (path, icon)
                 }));

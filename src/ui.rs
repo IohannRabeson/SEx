@@ -21,13 +21,18 @@ pub fn file_entry<'a>(
     row = row.push_maybe(icon.map(|handle| {
         container(
             svg(handle)
-                .style(|theme: &Theme, _status| {
-                    svg::Style { color: Some(ui::main_color(theme)) }
+                .style(|theme: &Theme, _status| svg::Style {
+                    color: Some(ui::main_color(theme)),
                 })
                 .width(ICON_SIZE)
                 .height(ICON_SIZE),
         )
-        .padding(Padding{ top: 0., right: 4., bottom: 0., left: 0. })
+        .padding(Padding {
+            top: 0.,
+            right: 4.,
+            bottom: 0.,
+            left: 0.,
+        })
     }));
     row = row.push(
         iced::widget::text(text.to_string())
@@ -36,7 +41,12 @@ pub fn file_entry<'a>(
     );
     row = row.align_y(Vertical::Center);
 
-    let mut selectable_part = container(row).padding(Padding{ top: 0., right: 4., bottom: 0., left: 4. });
+    let mut selectable_part = container(row).padding(Padding {
+        top: 0.,
+        right: 4.,
+        bottom: 0.,
+        left: 4.,
+    });
 
     if selected {
         selectable_part = selectable_part.style(selected_style);

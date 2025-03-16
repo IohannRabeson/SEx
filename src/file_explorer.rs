@@ -44,10 +44,7 @@ impl FileExplorer {
         self::view(self.model.as_ref(), self.directory_icon.clone())
     }
 
-    pub fn update(
-        &mut self,
-        message: Message,
-    ) -> Task<crate::Message> {
+    pub fn update(&mut self, message: Message) -> Task<crate::Message> {
         match message {
             Message::RequestLoad(id, path) => {
                 return Task::perform(load_directory_entries(path), move |entries| {
@@ -161,12 +158,8 @@ pub enum Message {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NewEntry {
-    Directory {
-        path_component: OsString,
-    },
-    File {
-        path_component: OsString,
-    },
+    Directory { path_component: OsString },
+    File { path_component: OsString },
 }
 
 impl NewEntry {
@@ -220,9 +213,17 @@ fn view(tree: Option<&FileExplorerModel>, directory_icon: svg::Handle) -> Elemen
     .into()
 }
 
-fn make_selectable_part(model: &FileExplorerModel, id: NodeId, directory_icon: svg::Handle) -> Element<crate::Message> {
+fn make_selectable_part(
+    model: &FileExplorerModel,
+    id: NodeId,
+    directory_icon: svg::Handle,
+) -> Element<crate::Message> {
     let path_component = model.path_component(id).unwrap();
-    let icon = if model.is_directory(id) { Some(directory_icon) } else { None };
+    let icon = if model.is_directory(id) {
+        Some(directory_icon)
+    } else {
+        None
+    };
     let is_selected = model.selection.is_some_and(|selection| selection == id);
     let select_message = crate::Message::FileExplorer(Message::Select(Some(id)));
 
@@ -440,14 +441,10 @@ impl FileExplorerModel {
 
                 if child_with_path_component.is_none() {
                     match new_entry {
-                        NewEntry::File {
-                            path_component,
-                        } => {
+                        NewEntry::File { path_component } => {
                             self.add_leaf(parent_id, path_component);
                         }
-                        NewEntry::Directory {
-                            path_component,
-                        } => {
+                        NewEntry::Directory { path_component } => {
                             self.add_container(parent_id, path_component);
                         }
                     }
@@ -460,11 +457,7 @@ impl FileExplorerModel {
 
     /// Adding a node changes the tree structure so
     /// linear index must be updated using update_linear_index().
-    fn add_container(
-        &mut self,
-        parent: NodeId,
-        path_component: OsString,
-    ) -> NodeId {
+    fn add_container(&mut self, parent: NodeId, path_component: OsString) -> NodeId {
         let new_node_id = NodeId(self.next_node_id);
         self.next_node_id += 1;
         let parent_node = self.get_node(parent).unwrap();
@@ -488,11 +481,7 @@ impl FileExplorerModel {
 
     /// Adding a node changes the tree structure so
     /// linear index must be updated using update_linear_index().
-    fn add_leaf(
-        &mut self,
-        parent: NodeId,
-        path_component: OsString,
-    ) -> NodeId {
+    fn add_leaf(&mut self, parent: NodeId, path_component: OsString) -> NodeId {
         let new_node_id = NodeId(self.next_node_id);
         self.next_node_id += 1;
         let parent_node = self.get_node(parent).unwrap();
@@ -719,10 +708,10 @@ impl FileExplorerModel {
     pub fn selection(&self) -> Option<NodeId> {
         self.selection
     }
-    
+
     pub fn is_directory(&self, id: NodeId) -> bool {
         if let Some(node) = self.get_node(id) {
-            return node.borrow().is_directory()
+            return node.borrow().is_directory();
         }
 
         false

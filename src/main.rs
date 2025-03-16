@@ -106,7 +106,6 @@ struct SEx {
 
 impl SEx {
     fn new() -> (Self, Task<Message>) {
-        let directory_icon = svg::Handle::from_memory(include_bytes!("../svg/icons8-folder2.svg"));
         let (mut panes, waveform_pane) = pane_grid::State::new(PaneState::Waveform);
 
         let (_, explorer_waveform_split) = panes
@@ -158,6 +157,8 @@ impl SEx {
 
         panes.resize(spectrum_split, 0.6);
 
+        let directory_icon = svg::Handle::from_memory(include_bytes!("../svg/icons8-folder2.svg"));
+
         (
             Self {
                 audio: Audio::new(),
@@ -194,9 +195,7 @@ impl SEx {
                 return self.explorer.update(message);
             }
             Message::Search(message) => {
-                return self
-                    .search
-                    .update(message, &mut self.view);
+                return self.search.update(message, &mut self.view);
             }
             Message::PaneResized(pane_grid::ResizeEvent { split, ratio }) => {
                 self.panes.resize(split, ratio);
@@ -343,7 +342,6 @@ async fn load_directory_entries(directory_path: PathBuf) -> Vec<NewEntry> {
 
                         if is_file_contains_audio(&path) {
                             results.push(NewEntry::File {
-
                                 path_component: entry.file_name(),
                             });
                         }
@@ -360,7 +358,6 @@ async fn load_directory_entries(directory_path: PathBuf) -> Vec<NewEntry> {
 
 fn setup_logger() -> Result<(), AppError> {
     fern::Dispatch::new()
-        // Perform allocation-free log formatting
         .format(|out, message, record| {
             out.finish(format_args!(
                 "[{} {} {}] {}",
@@ -370,10 +367,8 @@ fn setup_logger() -> Result<(), AppError> {
                 message
             ))
         })
-        // Add blanket level filter -
         .level(log::LevelFilter::Off)
         .level_for("sex", log::LevelFilter::Debug)
-        // Output to stdout, files, and other Dispatch configurations
         .chain(std::io::stdout())
         .chain(
             std::fs::OpenOptions::new()
@@ -381,7 +376,6 @@ fn setup_logger() -> Result<(), AppError> {
                 .create(true)
                 .open("output.log")?,
         )
-        // Apply globally
         .apply()?;
 
     Ok(())
