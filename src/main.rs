@@ -1,4 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::{
+    ffi::OsStr,
+    path::{Path, PathBuf},
+};
 
 use audio::Audio;
 use file_explorer::{FileExplorer, NewEntry};
@@ -220,7 +223,7 @@ impl SEx {
                 self.spectrum.update(message);
             }
             Message::SelectFile(Some(path)) => {
-                if path.is_file() && is_file_contains_audio(&path) {
+                if path.is_file() && display_file(&path) {
                     self.audio.play(&path);
                     self.waveform.show(&path);
                 } else {
@@ -313,7 +316,18 @@ impl SEx {
     }
 }
 
-fn is_file_contains_audio(path: impl AsRef<Path>) -> bool {
+fn display_file(path: impl AsRef<Path>) -> bool {
+    let path = path.as_ref();
+
+    if path
+        .file_name()
+        .map(OsStr::to_str)
+        .flatten()
+        .is_some_and(|name| name.starts_with('.'))
+    {
+        return false;
+    }
+
     mime_guess::from_path(path)
         .iter()
         .any(|mime| mime.type_() == mime::AUDIO && mime.subtype() != "midi")
@@ -340,7 +354,7 @@ async fn load_directory_entries(directory_path: PathBuf) -> Vec<NewEntry> {
                     } else if metadata.is_file() {
                         let path: PathBuf = entry.path().into();
 
-                        if is_file_contains_audio(&path) {
+                        if display_file(&path) {
                             results.push(NewEntry::File {
                                 path_component: entry.file_name(),
                             });
