@@ -348,7 +348,7 @@ impl canvas::Program<crate::Message> for Waveform {
                 for (index, block) in self.samples.chunks(samples_in_block).enumerate() {
                     if let Some(max) = block
                         .iter()
-                        .max_by(|left, right| left.partial_cmp(&right).unwrap())
+                        .max_by(|left, right| left.partial_cmp(right).unwrap())
                     {
                         let height = *max * frame.height();
 
