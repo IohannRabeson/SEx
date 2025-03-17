@@ -374,6 +374,7 @@ fn setup_logger() -> Result<(), AppError> {
             std::fs::OpenOptions::new()
                 .write(true)
                 .create(true)
+                .truncate(true)
                 .open("output.log")?,
         )
         .apply()?;

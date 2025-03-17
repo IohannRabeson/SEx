@@ -120,8 +120,8 @@ mod tests {
 
     #[rstest]
     #[case(2, &[], &[])]
-    #[case(1, &[0.5, 0.6, 0.7], &[0.60553007081949833307])]
-    #[case(2, &[0.5, 0.6, 0.7, 0.8], &[0.60827625302982196889, 0.70710678118654752440])]
+    #[case(1, &[0.5, 0.6, 0.7], &[0.605_530_1])]
+    #[case(2, &[0.5, 0.6, 0.7, 0.8], &[0.608_276_25, 0.707_106_77])]
     fn test_compute_rms(#[case] channels: u16, #[case] buffer: &[f32], #[case] rms: &[f32]) {
         let result = Visualization::compute_rms(channels, buffer);
 
