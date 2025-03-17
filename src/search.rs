@@ -11,7 +11,7 @@ use iced::{
 use log::{debug, trace};
 use std::path::PathBuf;
 
-use crate::{is_file_contains_audio, ui, View};
+use crate::{display_file, ui, View};
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -172,21 +172,18 @@ pub enum SearchCommand {
 #[derive(Default, Clone)]
 pub struct SearchOptions {
     case_sensitive: bool,
-    include_hidden: bool,
 }
 
 fn accept_entry(entry: &DirEntry, searched: &str, options: &SearchOptions) -> bool {
     if let Some(filename) = entry.file_name().to_str() {
-        if options.include_hidden || !filename.starts_with('.') {
-            let accept = if options.case_sensitive {
-                filename.contains(searched)
-            } else {
-                filename.contains(searched)
-                    || filename.to_lowercase().contains(&searched.to_lowercase())
-            };
+        let accept = if options.case_sensitive {
+            filename.contains(searched)
+        } else {
+            filename.contains(searched)
+                || filename.to_lowercase().contains(&searched.to_lowercase())
+        };
 
-            return accept && is_file_contains_audio(entry.path());
-        }
+        return accept && display_file(entry.path());
     }
 
     false
