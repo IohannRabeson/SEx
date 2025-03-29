@@ -18,7 +18,7 @@ const FFT_SIZE: usize = 2048;
 /// So I'm rounding to 1024 to be sure its big enough.
 const MAGNITUDE_ZERO_DB: f32 = 1024.0;
 const MIN_FREQ: f32 = 20.0;
-const MAX_FREQ: f32 = 10000.0;
+const MAX_FREQ: f32 = 22000.0;
 
 pub struct Spectrum {
     processor: FftProcessor<2048>,
