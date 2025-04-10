@@ -103,8 +103,9 @@ impl FileWatcher {
 }
 
 fn run_watcher() -> impl Stream<Item = crate::Message> {
-    use async_std::task;
     use iced::futures::SinkExt;
+
+    let runtime = tokio::runtime::Runtime::new().unwrap();
 
     iced::stream::channel(4, async move |mut output| {
         debug!("Start file watcher subscription");
@@ -120,7 +121,7 @@ fn run_watcher() -> impl Stream<Item = crate::Message> {
         let config = notify::Config::default();
         let mut output_handler = output.clone();
         let event_handler = move |event| {
-            task::block_on(async {
+            runtime.block_on(async {
                 match event {
                     Ok(event) => output_handler
                         .send(crate::Message::FileWatcher(file_watcher::Message::Notify(

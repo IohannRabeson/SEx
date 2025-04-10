@@ -1,4 +1,3 @@
-use async_std::fs::DirEntry;
 use iced::{
     futures::{
         channel::mpsc::{self, Sender},
@@ -174,7 +173,7 @@ pub struct SearchOptions {
     case_sensitive: bool,
 }
 
-fn accept_entry(entry: &DirEntry, searched: &str, options: &SearchOptions) -> bool {
+fn accept_entry(entry: &tokio::fs::DirEntry, searched: &str, options: &SearchOptions) -> bool {
     if let Some(filename) = entry.file_name().to_str() {
         let accept = if options.case_sensitive {
             filename.contains(searched)
@@ -197,9 +196,9 @@ async fn search_filesystem(
     let mut results: Vec<PathBuf> = Vec::new();
 
     if let Some(current_path) = stack.pop() {
-        if let Ok(mut entries) = async_std::fs::read_dir(current_path).await {
-            while let Some(res) = entries.next().await {
-                if let Ok(entry) = res {
+        if let Ok(mut entries) = tokio::fs::read_dir(current_path).await {
+            while let Ok(res) = entries.next_entry().await {
+                if let Some(entry) = res {
                     if let Ok(metadata) = entry.metadata().await {
                         if metadata.is_dir() || metadata.is_file() {
                             if metadata.is_dir() {
