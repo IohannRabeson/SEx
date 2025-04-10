@@ -7,7 +7,6 @@ use audio::Audio;
 use file_explorer::{FileExplorer, NewEntry};
 use file_watcher::FileWatcher;
 use iced::{
-    futures::StreamExt,
     keyboard::{self, Key, Modifiers},
     widget::{column, pane_grid, svg, PaneGrid},
     window, Element, Font, Length, Subscription, Task, Theme,
@@ -48,12 +47,12 @@ enum AppError {
 fn main() -> Result<(), AppError> {
     setup_logger()?;
 
-    iced::application("SEx - Sample Explorer", SEx::update, SEx::view)
+    iced::application(SEx::new, SEx::update, SEx::view)
         .theme(SEx::theme)
         .font(include_bytes!("../fonts/SF-Pro.ttf").as_slice())
         .default_font(Font::with_name("SF Pro"))
         .subscription(SEx::subscription)
-        .run_with(SEx::new)?;
+        .run()?;
 
     Ok(())
 }
@@ -343,22 +342,20 @@ async fn select_existing_directory() -> Option<PathBuf> {
 async fn load_directory_entries(directory_path: PathBuf) -> Vec<NewEntry> {
     let mut results = Vec::new();
 
-    if let Ok(mut dir_entries) = async_std::fs::read_dir(directory_path).await {
-        while let Some(res) = dir_entries.next().await {
-            if let Ok(entry) = res {
-                if let Ok(metadata) = entry.metadata().await {
-                    if metadata.is_dir() {
-                        results.push(NewEntry::Directory {
+    if let Ok(mut dir_entries) = tokio::fs::read_dir(directory_path).await {
+        while let Ok(Some(entry)) = dir_entries.next_entry().await {
+            if let Ok(metadata) = entry.metadata().await {
+                if metadata.is_dir() {
+                    results.push(NewEntry::Directory {
+                        path_component: entry.file_name(),
+                    });
+                } else if metadata.is_file() {
+                    let path: PathBuf = entry.path().into();
+
+                    if display_file(&path) {
+                        results.push(NewEntry::File {
                             path_component: entry.file_name(),
                         });
-                    } else if metadata.is_file() {
-                        let path: PathBuf = entry.path().into();
-
-                        if display_file(&path) {
-                            results.push(NewEntry::File {
-                                path_component: entry.file_name(),
-                            });
-                        }
                     }
                 }
             }

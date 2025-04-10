@@ -14,7 +14,7 @@ apodize = "1.0.0"
 async-std = "1.13.1"
 fern = "0.7.1"
 humantime = "2.2.0"
-iced = { git = "https://github.com/iced-rs/iced", rev = "fd5ed0d0a6e84b3c036ff8e1f0d62d383d4b1e82", features = ["async-std", "svg", "image", "canvas"] }
+iced = { git = "https://github.com/iced-rs/iced", rev = "193a340d6de929ff62af634df35555e256eff116", features = ["tokio", "svg", "image", "canvas"] }
 itertools = "0.14.0"
 log = "0.4.27"
 mime = "0.3.17"
@@ -24,6 +24,7 @@ rfd = "0.15.3"
 rodio = { git = "https://github.com/RustAudio/rodio", rev = "64cf70b45b3097ca10ca72eccceaddbb937b24e2" }
 rustfft = "6.2.0"
 thiserror = "2.0.12"
+tokio = { version = "1.44.2", features = ["fs", "rt"] }
 
 [dev-dependencies]
 rstest = "0.25.0"
