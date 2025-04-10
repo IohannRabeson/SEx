@@ -16,7 +16,7 @@ fern = "0.7.1"
 humantime = "2.2.0"
 iced = { git = "https://github.com/iced-rs/iced", rev = "fd5ed0d0a6e84b3c036ff8e1f0d62d383d4b1e82", features = ["async-std", "svg", "image", "canvas"] }
 itertools = "0.14.0"
-log = "0.4.26"
+log = "0.4.27"
 mime = "0.3.17"
 mime_guess = "2.0.5"
 notify = "8.0.0"
