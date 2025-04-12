@@ -200,11 +200,13 @@ async fn search_filesystem(
             while let Ok(Some(entry)) = entries.next_entry().await {
                 if let Ok(metadata) = entry.metadata().await {
                     if metadata.is_dir() || metadata.is_file() {
+                        let path = entry.path();
+
                         if metadata.is_dir() {
-                            stack.push(entry.path().to_path_buf().into());
+                            stack.push(path.clone());
                         }
                         if accept_entry(&entry, searched, options) {
-                            results.push(entry.path().to_path_buf().into());
+                            results.push(path);
                         }
                     }
                 }

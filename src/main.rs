@@ -320,8 +320,7 @@ fn display_file(path: impl AsRef<Path>) -> bool {
 
     if path
         .file_name()
-        .map(OsStr::to_str)
-        .flatten()
+        .and_then(OsStr::to_str)
         .is_some_and(|name| name.starts_with('.'))
     {
         return false;
@@ -350,7 +349,7 @@ async fn load_directory_entries(directory_path: PathBuf) -> Vec<NewEntry> {
                         path_component: entry.file_name(),
                     });
                 } else if metadata.is_file() {
-                    let path: PathBuf = entry.path().into();
+                    let path: PathBuf = entry.path();
 
                     if display_file(&path) {
                         results.push(NewEntry::File {
