@@ -1,4 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 use iced::{
     futures::{channel::mpsc, Stream, StreamExt},
@@ -10,6 +13,7 @@ use notify::Watcher;
 use crate::{file_explorer, file_watcher};
 
 pub enum Command {
+    Initialize(Arc<tokio::runtime::Runtime>),
     ResetRootPath(PathBuf),
 }
 
@@ -21,12 +25,14 @@ pub enum Message {
 
 pub struct FileWatcher {
     command_sender: Option<mpsc::Sender<Command>>,
+    runtime: Arc<tokio::runtime::Runtime>,
 }
 
 impl FileWatcher {
     pub fn new() -> Self {
         Self {
             command_sender: None,
+            runtime: Arc::new(tokio::runtime::Runtime::new().unwrap()),
         }
     }
 
@@ -40,7 +46,11 @@ impl FileWatcher {
 
     pub fn update(&mut self, message: Message) -> Task<crate::Message> {
         match message {
-            Message::Initialize(sender) => {
+            Message::Initialize(mut sender) => {
+                sender
+                    .try_send(Command::Initialize(self.runtime.clone()))
+                    .unwrap();
+
                 self.command_sender = Some(sender);
             }
             Message::Notify(event) => {
@@ -105,8 +115,6 @@ impl FileWatcher {
 fn run_watcher() -> impl Stream<Item = crate::Message> {
     use iced::futures::SinkExt;
 
-    let runtime = tokio::runtime::Runtime::new().unwrap();
-
     iced::stream::channel(4, async move |mut output| {
         debug!("Start file watcher subscription");
         let (command_sender, mut command_receiver) = mpsc::channel::<Command>(8);
@@ -119,35 +127,45 @@ fn run_watcher() -> impl Stream<Item = crate::Message> {
             .unwrap();
 
         let config = notify::Config::default();
-        let mut output_handler = output.clone();
-        let event_handler = move |event| {
-            runtime.block_on(async {
-                match event {
-                    Ok(event) => output_handler
-                        .send(crate::Message::FileWatcher(file_watcher::Message::Notify(
-                            event,
-                        )))
-                        .await
-                        .unwrap(),
-                    Err(_) => todo!(),
-                }
-            });
-        };
-
-        let mut watcher =
-            notify::RecommendedWatcher::new(event_handler, config).expect("create watcher");
+        let mut watcher = None;
         let mut root_path: Option<PathBuf> = None;
 
         while let Some(command) = command_receiver.next().await {
             match command {
+                Command::Initialize(runtime) => {
+                    let mut output_handler = output.clone();
+                    let event_handler = move |event| {
+                        runtime.block_on(async {
+                            match event {
+                                Ok(event) => output_handler
+                                    .send(crate::Message::FileWatcher(file_watcher::Message::Notify(
+                                        event,
+                                    )))
+                                    .await
+                                    .unwrap(),
+                                Err(_) => todo!(),
+                            }
+                        });
+                    };
+
+                    watcher = match notify::RecommendedWatcher::new(event_handler, config) {
+                        Ok(watcher) => Some(watcher),
+                        Err(error) => {
+                            log::error!("Failed to create file watcher: {}", error);
+                            None
+                        }
+                    };
+                }
                 Command::ResetRootPath(path_buf) => {
-                    if let Some(root_path) = root_path.as_ref() {
-                        watcher.unwatch(root_path).unwrap();
+                    if let Some(watcher) = watcher.as_mut() {
+                        if let Some(root_path) = root_path.as_ref() {
+                            watcher.unwatch(root_path).unwrap();
+                        }
+                        watcher
+                            .watch(&path_buf, notify::RecursiveMode::Recursive)
+                            .unwrap();
+                        root_path = Some(path_buf);
                     }
-                    watcher
-                        .watch(&path_buf, notify::RecursiveMode::Recursive)
-                        .unwrap();
-                    root_path = Some(path_buf);
                 }
             }
         }
