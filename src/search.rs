@@ -197,16 +197,14 @@ async fn search_filesystem(
 
     if let Some(current_path) = stack.pop() {
         if let Ok(mut entries) = tokio::fs::read_dir(current_path).await {
-            while let Ok(res) = entries.next_entry().await {
-                if let Some(entry) = res {
-                    if let Ok(metadata) = entry.metadata().await {
-                        if metadata.is_dir() || metadata.is_file() {
-                            if metadata.is_dir() {
-                                stack.push(entry.path().to_path_buf().into());
-                            }
-                            if accept_entry(&entry, searched, options) {
-                                results.push(entry.path().to_path_buf().into());
-                            }
+            while let Ok(Some(entry)) = entries.next_entry().await {
+                if let Ok(metadata) = entry.metadata().await {
+                    if metadata.is_dir() || metadata.is_file() {
+                        if metadata.is_dir() {
+                            stack.push(entry.path().to_path_buf().into());
+                        }
+                        if accept_entry(&entry, searched, options) {
+                            results.push(entry.path().to_path_buf().into());
                         }
                     }
                 }
