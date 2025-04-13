@@ -3878,7 +3878,6 @@ name = "sex"
 version = "0.1.0"
 dependencies = [
  "apodize",
- "async-std",
  "fern",
  "humantime",
  "iced",
