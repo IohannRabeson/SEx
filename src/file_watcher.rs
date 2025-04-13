@@ -138,9 +138,9 @@ fn run_watcher() -> impl Stream<Item = crate::Message> {
                         runtime.block_on(async {
                             match event {
                                 Ok(event) => output_handler
-                                    .send(crate::Message::FileWatcher(file_watcher::Message::Notify(
-                                        event,
-                                    )))
+                                    .send(crate::Message::FileWatcher(
+                                        file_watcher::Message::Notify(event),
+                                    ))
                                     .await
                                     .unwrap(),
                                 Err(_) => todo!(),
