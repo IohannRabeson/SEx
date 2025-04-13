@@ -11,7 +11,6 @@ debug = true
 
 [dependencies]
 apodize = "1.0.0"
-async-std = "1.13.1"
 fern = "0.7.1"
 humantime = "2.2.0"
 iced = { git = "https://github.com/iced-rs/iced", rev = "193a340d6de929ff62af634df35555e256eff116", features = ["tokio", "svg", "image", "canvas"] }
