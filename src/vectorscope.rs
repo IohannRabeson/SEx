@@ -4,7 +4,7 @@ use iced::{
         canvas::{self, Fill, Frame, Path},
         Canvas,
     },
-    Element, Point, Renderer, Theme,
+    Degrees, Element, Point, Renderer, Theme,
 };
 
 use crate::ui;
@@ -64,6 +64,11 @@ impl canvas::Program<crate::Message> for Vectorscope {
         let stroke = ui::separation_line_stroke(theme);
 
         frame.stroke(&path, stroke);
+        frame.translate(iced::Vector {
+            x: center_x,
+            y: center_y,
+        });
+        frame.rotate(Degrees(-45.0));
 
         // Draw scope.
         let scale = bounds.width.min(bounds.height) / 2.0;
@@ -71,7 +76,7 @@ impl canvas::Program<crate::Message> for Vectorscope {
 
         // Cumulating all the circles into a unique path leads to performance issue.
         for &(x, y) in &self.points {
-            let pos = Point::new(center_x + x * scale, center_y - y * scale);
+            let pos = Point::new(x * scale, -y * scale);
             let path = Path::circle(pos, 1.0);
             frame.fill(&path, fill);
         }
