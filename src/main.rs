@@ -52,6 +52,7 @@ fn main() -> Result<(), AppError> {
         .font(include_bytes!("../fonts/SF-Pro.ttf").as_slice())
         .default_font(Font::with_name("SF Pro"))
         .subscription(SEx::subscription)
+        .title("SEx - Sample Explorer")
         .run()?;
 
     Ok(())
