@@ -35,12 +35,18 @@ pub enum AudioCommand {
 
 pub struct Audio {
     command_sender: Option<Sender<AudioCommand>>,
-    output_stream: OutputStream,
+    output_stream: Option<OutputStream>,
 }
 
 impl Audio {
     pub fn new() -> Self {
-        let output_stream = rodio::OutputStreamBuilder::open_default_stream().unwrap();
+        let output_stream = match rodio::OutputStreamBuilder::open_default_stream() {
+            Ok(output_stream) => Some(output_stream),
+            Err(error) => {
+                log::error!("Unable to create output stream: {}", error);
+                None
+            }
+        };
 
         Self {
             command_sender: None,
@@ -51,8 +57,10 @@ impl Audio {
     pub fn update(&mut self, message: Message) -> Task<crate::Message> {
         match message {
             Message::Initialize(command_sender) => {
-                self.command_sender = Some(command_sender);
-                self.send_command(AudioCommand::Initialize(self.output_stream.mixer().clone()));
+                if let Some(output_stream) = self.output_stream.as_ref() {
+                    self.command_sender = Some(command_sender);
+                    self.send_command(AudioCommand::Initialize(output_stream.mixer().clone()));
+                }
             }
             Message::QueryPosition => {
                 self.send_command_if_possible(AudioCommand::QueryPosition);
@@ -68,11 +76,15 @@ impl Audio {
     pub fn subscription(&self) -> Subscription<crate::Message> {
         const UI_FRAME_DURATION: Duration = Duration::from_millis(1000 / 60);
 
-        Subscription::batch([
-            Subscription::run(run_audio_player),
-            iced::time::every(UI_FRAME_DURATION)
-                .map(|_| crate::Message::Audio(Message::QueryPosition)),
-        ])
+        if self.output_stream.is_some() {
+            Subscription::batch([
+                Subscription::run(run_audio_player),
+                iced::time::every(UI_FRAME_DURATION)
+                    .map(|_| crate::Message::Audio(Message::QueryPosition)),
+            ])
+        } else {
+            Subscription::none()
+        }
     }
 
     pub fn play(&mut self, path: impl AsRef<Path>) {
