@@ -205,9 +205,7 @@ fn waveform_loading() -> impl Stream<Item = Message> {
                     let loading_start_time = Instant::now();
                     let buffer_size = sample_rate;
                     debug!("Decoding, buffer size: {}", buffer_size);
-                    // It's an option because I need to take the buffer when it is filled to avoid cloning it.
-                    // It's safe to unwrap it because there always a buffer while decoding.
-                    let mut buffer = Some(Vec::with_capacity(buffer_size));
+                    let mut buffer = Vec::with_capacity(buffer_size);
 
                     'outer: for i in 0..samples_count {
                         let mut accumulator = 0f32;
@@ -216,7 +214,7 @@ fn waveform_loading() -> impl Stream<Item = Message> {
                             if let Some(WaveformCommand::StopLoading) =
                                 command_receiver.next().now_or_never().flatten()
                             {
-                                buffer.as_mut().unwrap().clear();
+                                buffer.clear();
                                 break 'outer;
                             }
 
@@ -233,27 +231,25 @@ fn waveform_loading() -> impl Stream<Item = Message> {
                         }
 
                         buffer
-                            .as_mut()
-                            .unwrap()
                             .push(accumulator / decoder.channels() as f32);
 
-                        if buffer.as_ref().unwrap().len() == buffer_size {
+                        if buffer.len() == buffer_size {
                             output
                                 .send(Message::SamplesReady {
-                                    path: buffer.take().unwrap(),
+                                    path: buffer.clone(),
                                     generation,
                                 })
                                 .await
                                 .unwrap();
 
-                            buffer = Some(Vec::with_capacity(buffer_size));
+                            buffer.clear();
                         }
                     }
 
-                    if !buffer.as_ref().unwrap().is_empty() {
+                    if !buffer.is_empty() {
                         output
                             .send(Message::SamplesReady {
-                                path: buffer.take().unwrap(),
+                                path: buffer.clone(),
                                 generation,
                             })
                             .await
