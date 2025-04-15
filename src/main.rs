@@ -49,7 +49,7 @@ fn main() -> Result<(), AppError> {
 
     iced::application(SEx::new, SEx::update, SEx::view)
         .theme(SEx::theme)
-        .font(include_bytes!("../fonts/SF-Pro.ttf").as_slice())
+        .font(SEx::FONT)
         .default_font(Font::with_name("SF Pro"))
         .subscription(SEx::subscription)
         .title("SEx - Sample Explorer")
@@ -108,6 +108,8 @@ struct SEx {
 }
 
 impl SEx {
+    const FONT: &'static [u8] = include_bytes!("../fonts/SF-Pro.ttf");
+
     fn new() -> (Self, Task<Message>) {
         let (mut panes, waveform_pane) = pane_grid::State::new(PaneState::Waveform);
 
@@ -391,4 +393,41 @@ fn setup_logger() -> Result<(), AppError> {
         .apply()?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::ffi::OsString;
+
+    use iced::Settings;
+    use iced_test::Simulator;
+    use temp_dir_builder::TempDirectoryBuilder;
+
+    use crate::{load_directory_entries, Message, SEx};
+
+    pub(crate) fn simulator(app: &SEx) -> Simulator<Message> {
+        Simulator::with_settings(
+            Settings {
+                fonts: vec![SEx::FONT.into()],
+                default_font: iced::Font::with_name("SF Pro"),
+                ..Settings::default()
+            },
+            app.view(),
+        )
+    }
+
+    #[tokio::test]
+    async fn test_load_directory_entries() {
+        let test_dir = TempDirectoryBuilder::default()
+            .add_empty_file("file.wav")
+            .add_directory("dir")
+            .build()
+            .unwrap();
+
+        let entries = load_directory_entries(test_dir.path().to_path_buf()).await;
+
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[0].path_component(), &OsString::from("dir"));
+        assert_eq!(entries[1].path_component(), &OsString::from("file.wav"));
+    }
 }

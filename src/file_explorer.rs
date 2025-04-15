@@ -182,6 +182,13 @@ pub enum ContainerStatus {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub struct NodeId(usize);
 
+#[cfg(test)]
+impl NodeId {
+    pub fn new(id: usize) -> Self {
+        Self(id)
+    }
+}
+
 fn view(tree: Option<&FileExplorerModel>, directory_icon: svg::Handle) -> Element<crate::Message> {
     const DEPTH_OFFSET: f32 = 20f32;
 
@@ -715,5 +722,281 @@ impl FileExplorerModel {
         }
 
         false
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use iced_test::{selector::text, Error};
+    use temp_dir_builder::TempDirectoryBuilder;
+
+    use crate::{
+        file_explorer::{self, NewEntry, NodeId},
+        tests::simulator,
+        Message, SEx,
+    };
+
+    #[test]
+    fn test_load_file() -> Result<(), Error> {
+        let test_dir = TempDirectoryBuilder::default().build().unwrap();
+        let (mut app, _task) = SEx::new();
+
+        let root_node_id = NodeId::new(0);
+        let _ = app.update(Message::OpenDirectory(Some(test_dir.path().to_path_buf())));
+        let _ = app.update(Message::FileExplorer(
+            file_explorer::Message::ChildrenLoaded(
+                root_node_id,
+                vec![NewEntry::File {
+                    path_component: "test_sine_L.wav".into(),
+                }],
+            ),
+        ));
+
+        let mut ui = simulator(&app);
+
+        ui.find(text("test_sine_L.wav")).unwrap();
+
+        let snapshot = ui.snapshot(&iced::Theme::CatppuccinFrappe)?;
+
+        assert!(snapshot.matches_hash("snapshots/test_load_file")?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_load_tree() -> Result<(), Error> {
+        let test_dir = TempDirectoryBuilder::default().build().unwrap();
+        let (mut app, _task) = SEx::new();
+
+        let root_node_id = NodeId::new(0);
+        let foo_node_id = NodeId::new(1);
+        let _ = app.update(Message::OpenDirectory(Some(test_dir.path().to_path_buf())));
+        let _ = app.update(Message::FileExplorer(
+            file_explorer::Message::ChildrenLoaded(
+                root_node_id,
+                vec![NewEntry::Directory {
+                    path_component: "foo".into(),
+                }],
+            ),
+        ));
+        let _ = app.update(Message::FileExplorer(
+            file_explorer::Message::ChildrenLoaded(
+                foo_node_id,
+                vec![NewEntry::File {
+                    path_component: "test_sine_L.wav".into(),
+                }],
+            ),
+        ));
+
+        let mut ui = simulator(&app);
+
+        ui.find(text("foo")).unwrap();
+        ui.find(text("test_sine_L.wav")).unwrap();
+
+        let snapshot = ui.snapshot(&iced::Theme::CatppuccinFrappe)?;
+
+        assert!(snapshot.matches_hash("snapshots/test_load_tree")?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_collapse() -> Result<(), Error> {
+        let test_dir = TempDirectoryBuilder::default().build().unwrap();
+        let (mut app, _task) = SEx::new();
+
+        let root_node_id = NodeId::new(0);
+        let foo_node_id = NodeId::new(1);
+        let _ = app.update(Message::OpenDirectory(Some(test_dir.path().to_path_buf())));
+        let _ = app.update(Message::FileExplorer(
+            file_explorer::Message::ChildrenLoaded(
+                root_node_id,
+                vec![
+                    NewEntry::Directory {
+                        path_component: "foo".into(),
+                    },
+                    NewEntry::Directory {
+                        path_component: "bar".into(),
+                    },
+                ],
+            ),
+        ));
+        let _ = app.update(Message::FileExplorer(
+            file_explorer::Message::ChildrenLoaded(
+                foo_node_id,
+                vec![NewEntry::File {
+                    path_component: "test_sine_L.wav".into(),
+                }],
+            ),
+        ));
+        let _ = app.update(Message::FileExplorer(file_explorer::Message::Collapse(
+            foo_node_id,
+        )));
+
+        let mut ui = simulator(&app);
+
+        ui.find(text("foo")).unwrap();
+        ui.find(text("test_sine_L.wav")).unwrap_err();
+
+        let snapshot = ui.snapshot(&iced::Theme::CatppuccinFrappe)?;
+
+        assert!(snapshot.matches_hash("snapshots/test_collapse")?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_select() -> Result<(), Error> {
+        let test_dir = TempDirectoryBuilder::default().build().unwrap();
+        let (mut app, _task) = SEx::new();
+
+        let root_node_id = NodeId::new(0);
+        let _ = app.update(Message::OpenDirectory(Some(test_dir.path().to_path_buf())));
+        let _ = app.update(Message::FileExplorer(
+            file_explorer::Message::ChildrenLoaded(
+                root_node_id,
+                vec![NewEntry::File {
+                    path_component: "test_sine_L.wav".into(),
+                }],
+            ),
+        ));
+        let _ = app.update(Message::FileExplorer(file_explorer::Message::Select(Some(
+            NodeId::new(1),
+        ))));
+
+        let mut ui = simulator(&app);
+
+        let snapshot = ui.snapshot(&iced::Theme::CatppuccinFrappe)?;
+
+        assert!(snapshot.matches_hash("snapshots/test_select")?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_select_next() -> Result<(), Error> {
+        let test_dir = TempDirectoryBuilder::default().build().unwrap();
+        let (mut app, _task) = SEx::new();
+
+        let root_node_id = NodeId::new(0);
+        let _ = app.update(Message::OpenDirectory(Some(test_dir.path().to_path_buf())));
+        let _ = app.update(Message::FileExplorer(
+            file_explorer::Message::ChildrenLoaded(
+                root_node_id,
+                vec![
+                    NewEntry::File {
+                        path_component: "test_sine_L.wav".into(),
+                    },
+                    NewEntry::File {
+                        path_component: "test_sine_LR.wav".into(),
+                    },
+                ],
+            ),
+        ));
+        let _ = app.update(Message::FileExplorer(file_explorer::Message::Select(Some(
+            NodeId::new(1),
+        ))));
+        let _ = app.update(Message::FileExplorer(file_explorer::Message::SelectNext));
+
+        let mut ui = simulator(&app);
+
+        let snapshot = ui.snapshot(&iced::Theme::CatppuccinFrappe)?;
+
+        assert!(snapshot.matches_hash("snapshots/test_select_next")?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_select_previous() -> Result<(), Error> {
+        let test_dir = TempDirectoryBuilder::default().build().unwrap();
+        let (mut app, _task) = SEx::new();
+
+        let root_node_id = NodeId::new(0);
+        let _ = app.update(Message::OpenDirectory(Some(test_dir.path().to_path_buf())));
+        let _ = app.update(Message::FileExplorer(
+            file_explorer::Message::ChildrenLoaded(
+                root_node_id,
+                vec![
+                    NewEntry::File {
+                        path_component: "test_sine_L.wav".into(),
+                    },
+                    NewEntry::File {
+                        path_component: "test_sine_LR.wav".into(),
+                    },
+                ],
+            ),
+        ));
+        let _ = app.update(Message::FileExplorer(file_explorer::Message::Select(Some(
+            NodeId::new(2),
+        ))));
+        let _ = app.update(Message::FileExplorer(
+            file_explorer::Message::SelectPrevious,
+        ));
+
+        let mut ui = simulator(&app);
+
+        let snapshot = ui.snapshot(&iced::Theme::CatppuccinFrappe)?;
+
+        assert!(snapshot.matches_hash("snapshots/test_select_previous")?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_removed() -> Result<(), Error> {
+        let test_dir = TempDirectoryBuilder::default().build().unwrap();
+        let (mut app, _task) = SEx::new();
+
+        let root_node_id = NodeId::new(0);
+        let _ = app.update(Message::OpenDirectory(Some(test_dir.path().to_path_buf())));
+        let foo_node_id = NodeId::new(1);
+        let bar_node_id = NodeId::new(2);
+        let _ = app.update(Message::FileExplorer(
+            file_explorer::Message::ChildrenLoaded(
+                root_node_id,
+                vec![
+                    NewEntry::Directory {
+                        path_component: "foo".into(),
+                    },
+                    NewEntry::Directory {
+                        path_component: "bar".into(),
+                    },
+                ],
+            ),
+        ));
+        let _ = app.update(Message::FileExplorer(
+            file_explorer::Message::ChildrenLoaded(
+                foo_node_id,
+                vec![NewEntry::File {
+                    path_component: "test_sine_L.wav".into(),
+                }],
+            ),
+        ));
+        let _ = app.update(Message::FileExplorer(
+            file_explorer::Message::ChildrenLoaded(
+                bar_node_id,
+                vec![NewEntry::File {
+                    path_component: "test_sine_R.wav".into(),
+                }],
+            ),
+        ));
+        let path_to_remove = test_dir.path().join("foo");
+        let _ = app.update(Message::FileExplorer(file_explorer::Message::Removed(
+            path_to_remove,
+        )));
+
+        let mut ui = simulator(&app);
+
+        ui.find(text("foo")).unwrap_err();
+        ui.find(text("bar")).unwrap();
+        ui.find(text("test_sine_L.wav")).unwrap_err();
+        ui.find(text("test_sine_R.wav")).unwrap();
+
+        let snapshot = ui.snapshot(&iced::Theme::CatppuccinFrappe)?;
+
+        assert!(snapshot.matches_hash("snapshots/test_removed")?);
+
+        Ok(())
     }
 }
