@@ -84,3 +84,22 @@ impl canvas::Program<crate::Message> for Vectorscope {
         vec![frame.into_geometry()]
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{tests::simulator, SEx};
+
+    #[test]
+    fn test_vectorscope() -> Result<(), iced_test::Error>
+    {
+        let (mut app, _) = SEx::new();
+
+        let _ = app.update(crate::Message::Vectorscope(super::Message::Points(vec![(0.5, 0.5), (0.5, 0.0), (0.0, 0.5)])));
+        let mut ui = simulator(&app);
+        let snapshot = ui.snapshot(&iced::Theme::CatppuccinFrappe)?;
+
+        assert!(snapshot.matches_hash("snapshots/test_vectorscope")?);
+
+        Ok(())
+    }
+}
