@@ -388,3 +388,37 @@ use crate::{audio, ui};
 
 static WAVEFORM_CONTAINER: LazyLock<container::Id> =
     LazyLock::new(|| container::Id::new("waveform"));
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        tests::{generate_sine, simulator},
+        SEx,
+    };
+    use iced_test::Error;
+
+    #[test]
+    fn test_waveform() -> Result<(), Error> {
+        let (mut app, _task) = SEx::new();
+
+        const SIZE: usize = 1000;
+        let buffer = generate_sine(SIZE).collect();
+
+        let _ = app.update(crate::Message::Waveform(
+            crate::waveform::Message::LoadingStarted(SIZE),
+        ));
+        let _ = app.update(crate::Message::Waveform(
+            crate::waveform::Message::SamplesReady {
+                path: buffer,
+                generation: 0,
+            },
+        ));
+
+        let mut ui = simulator(&app);
+        let snapshot = ui.snapshot(&iced::Theme::CatppuccinFrappe)?;
+
+        assert!(snapshot.matches_hash("snapshots/test_waveform")?);
+
+        Ok(())
+    }
+}

@@ -416,6 +416,12 @@ mod tests {
         )
     }
 
+    pub(crate) fn generate_sine(size: usize) -> impl Iterator<Item = f32> {
+        (0..size)
+            .map(move |i| i as f32 / (size as f32) * 2.0 * std::f32::consts::PI)
+            .map(f32::sin)
+    }
+
     #[tokio::test]
     async fn test_load_directory_entries() {
         let test_dir = TempDirectoryBuilder::default()

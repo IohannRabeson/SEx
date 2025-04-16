@@ -95,7 +95,9 @@ mod tests {
     fn test_vu_meter_mono() -> Result<(), iced_test::Error> {
         let (mut app, _) = SEx::new();
 
-        let _ = app.update(crate::Message::VuMeter(crate::vu_meter::Message::Rms(vec![1.0])));
+        let _ = app.update(crate::Message::VuMeter(crate::vu_meter::Message::Rms(
+            vec![1.0],
+        )));
         let mut ui = simulator(&app);
 
         let snapshot = ui.snapshot(&iced::Theme::CatppuccinFrappe)?;
@@ -109,7 +111,9 @@ mod tests {
     fn test_vu_meter_stereo() -> Result<(), iced_test::Error> {
         let (mut app, _) = SEx::new();
 
-        let _ = app.update(crate::Message::VuMeter(crate::vu_meter::Message::Rms(vec![0.5, 0.9])));
+        let _ = app.update(crate::Message::VuMeter(crate::vu_meter::Message::Rms(
+            vec![0.5, 0.9],
+        )));
         let mut ui = simulator(&app);
 
         let snapshot = ui.snapshot(&iced::Theme::CatppuccinFrappe)?;
@@ -123,7 +127,9 @@ mod tests {
     fn test_vu_meter_more_channels() -> Result<(), iced_test::Error> {
         let (mut app, _) = SEx::new();
 
-        let _ = app.update(crate::Message::VuMeter(crate::vu_meter::Message::Rms(vec![0.5, 0.6, 0.7])));
+        let _ = app.update(crate::Message::VuMeter(crate::vu_meter::Message::Rms(
+            vec![0.5, 0.6, 0.7],
+        )));
         let mut ui = simulator(&app);
 
         let snapshot = ui.snapshot(&iced::Theme::CatppuccinFrappe)?;

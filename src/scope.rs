@@ -93,17 +93,17 @@ impl canvas::Program<crate::Message> for Scope {
 
 #[cfg(test)]
 mod tests {
-    use crate::{tests::simulator, SEx};
+    use crate::{
+        tests::{generate_sine, simulator},
+        SEx,
+    };
     use iced_test::Error;
 
     #[test]
     fn test_scope() -> Result<(), Error> {
         let (mut app, _task) = SEx::new();
 
-        let buffer: Vec<f32> = (0..1000)
-            .map(|i| i as f32 / 1000.0 * 2.0 * std::f32::consts::PI)
-            .map(f32::sin)
-            .collect();
+        let buffer = generate_sine(1000).collect();
         let _ = app.update(crate::Message::Scope(crate::scope::Message::Buffer(buffer)));
 
         let mut ui = simulator(&app);
