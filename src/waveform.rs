@@ -387,7 +387,7 @@ static WAVEFORM_CONTAINER: LazyLock<container::Id> =
 
 #[cfg(test)]
 mod tests {
-    use std::{io::Cursor, pin::pin};
+    use std::{io::Cursor, path::Path, pin::pin};
 
     use crate::{
         tests::{generate_sine, simulator}, waveform::{self, waveform_loading, WaveformCommand}, SEx
@@ -395,7 +395,6 @@ mod tests {
     use iced::futures::{SinkExt, StreamExt};
     use iced_test::Error;
     use rodio::Decoder;
-    use temp_dir_builder::TempDirectoryBuilder;
 
     #[test]
     fn test_waveform() -> Result<(), Error> {
@@ -435,8 +434,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_waveform_loading() {
-        let temp_dir = TempDirectoryBuilder::default().add_binary_file("test.wav", TEST_SINE_MONO).build().unwrap();
-        let test_file_path = temp_dir.path().join("test.wav");
+        let test_file_path = Path::new(file!()).parent().expect("get parent").join("../audio/test_sine_mono.wav");
         let mut stream = pin!(waveform_loading());
         let mut init_message = stream.next().await;
 
