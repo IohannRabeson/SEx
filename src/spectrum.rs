@@ -1,9 +1,7 @@
+use iced::widget::canvas;
 use iced::{
     mouse,
-    widget::{
-        canvas::{self, Frame, Path},
-        Canvas,
-    },
+    widget::canvas::{Frame, Path},
     Element, Length, Point, Renderer, Size, Theme,
 };
 
@@ -73,10 +71,7 @@ impl Spectrum {
     }
 
     pub fn view(&self) -> Element<crate::Message> {
-        Canvas::new(self)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .into()
+        canvas(self).width(Length::Fill).height(Length::Fill).into()
     }
 }
 

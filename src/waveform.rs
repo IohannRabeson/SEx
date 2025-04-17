@@ -5,14 +5,12 @@ use std::{
     time::Instant,
 };
 
+use iced::widget::canvas;
 use iced::{
     event,
     futures::{channel::mpsc, FutureExt, SinkExt, Stream, StreamExt},
     mouse,
-    widget::{
-        canvas::{self, Cache},
-        container, Canvas, MouseArea,
-    },
+    widget::{canvas::Cache, container, MouseArea},
     window, Element, Event, Length, Point, Rectangle, Renderer, Size, Subscription, Task, Theme,
 };
 use log::debug;
@@ -153,7 +151,7 @@ impl Waveform {
 
     pub fn view(&self) -> Element<crate::Message> {
         MouseArea::new(
-            container(Canvas::new(self).width(Length::Fill).height(Length::Fill))
+            container(canvas(self).width(Length::Fill).height(Length::Fill))
                 .id(WAVEFORM_CONTAINER.clone()),
         )
         .on_move(|position| crate::Message::Waveform(Message::CursorMoved(position)))

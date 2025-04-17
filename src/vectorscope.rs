@@ -1,13 +1,10 @@
+use crate::ui;
+use iced::widget::canvas;
 use iced::{
     mouse,
-    widget::{
-        canvas::{self, Fill, Frame, Path},
-        Canvas,
-    },
+    widget::canvas::{Fill, Frame, Path},
     Degrees, Element, Point, Renderer, Theme,
 };
-
-use crate::ui;
 
 pub struct Vectorscope {
     points: Vec<(f32, f32)>,
@@ -32,7 +29,7 @@ impl Vectorscope {
     }
 
     pub fn view(&self) -> Element<crate::Message> {
-        Canvas::new(self).into()
+        canvas(self).into()
     }
 }
 

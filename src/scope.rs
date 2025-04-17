@@ -1,13 +1,10 @@
+use crate::ui;
+use iced::widget::canvas;
 use iced::{
     mouse,
-    widget::{
-        canvas::{self, Frame, Geometry, Path, Stroke},
-        Canvas,
-    },
+    widget::canvas::{Frame, Geometry, Path, Stroke},
     Element, Length, Point, Renderer, Theme,
 };
-
-use crate::ui;
 
 pub struct Scope {
     buffer: Vec<f32>,
@@ -33,10 +30,7 @@ impl Scope {
     }
 
     pub fn view(&self) -> Element<crate::Message> {
-        Canvas::new(self)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .into()
+        canvas(self).width(Length::Fill).height(Length::Fill).into()
     }
 }
 

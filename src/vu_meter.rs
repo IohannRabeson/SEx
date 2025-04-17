@@ -1,13 +1,8 @@
-use iced::{
-    mouse,
-    widget::{
-        canvas::{self, Cache},
-        Canvas,
-    },
-    Element, Length, Point, Rectangle, Renderer, Size, Theme,
-};
-
 use crate::ui;
+use iced::widget::canvas;
+use iced::{
+    mouse, widget::canvas::Cache, Element, Length, Point, Rectangle, Renderer, Size, Theme,
+};
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -29,10 +24,7 @@ impl VuMeter {
     }
 
     pub fn view(&self) -> Element<crate::Message> {
-        Canvas::new(self)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .into()
+        canvas(self).width(Length::Fill).height(Length::Fill).into()
     }
 
     pub fn update(&mut self, message: Message) {
