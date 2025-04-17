@@ -37,7 +37,10 @@ pub enum Message {
     LoadingStarted(usize),
     LoadingFinished,
     Clear,
-    SamplesReady { samples: Vec<f32>, generation: usize },
+    SamplesReady {
+        samples: Vec<f32>,
+        generation: usize,
+    },
     PlayPosition(f32),
     Click,
     CursorMoved(Point),
@@ -230,8 +233,7 @@ fn waveform_loading() -> impl Stream<Item = Message> {
                             };
                         }
 
-                        buffer
-                            .push(accumulator / decoder.channels() as f32);
+                        buffer.push(accumulator / decoder.channels() as f32);
 
                         if buffer.len() == buffer_size {
                             output
@@ -390,7 +392,9 @@ mod tests {
     use std::{io::Cursor, path::Path, pin::pin};
 
     use crate::{
-        tests::{generate_sine, simulator}, waveform::{self, waveform_loading, WaveformCommand}, SEx
+        tests::{generate_sine, simulator},
+        waveform::{self, waveform_loading, WaveformCommand},
+        SEx,
     };
     use iced::futures::{SinkExt, StreamExt};
     use iced_test::Error;
@@ -434,20 +438,35 @@ mod tests {
 
     #[tokio::test]
     async fn test_waveform_loading() {
-        let test_file_path = Path::new(file!()).parent().expect("get parent").join("../audio/test_sine_mono.wav");
+        let test_file_path = Path::new(file!())
+            .parent()
+            .expect("get parent")
+            .join("../audio/test_sine_mono.wav");
         let mut stream = pin!(waveform_loading());
         let mut init_message = stream.next().await;
 
-        assert!(matches!(init_message, Some(waveform::Message::Initialized(_))));
+        assert!(matches!(
+            init_message,
+            Some(waveform::Message::Initialized(_))
+        ));
 
         if let Some(waveform::Message::Initialized(command_sender)) = init_message.as_mut() {
-            command_sender.send(WaveformCommand::LoadFile { path: test_file_path, generation: 0 }).await.unwrap();
+            command_sender
+                .send(WaveformCommand::LoadFile {
+                    path: test_file_path,
+                    generation: 0,
+                })
+                .await
+                .unwrap();
 
             let mut buffer = Vec::new();
 
             while let Some(message) = stream.next().await {
                 match message {
-                    waveform::Message::SamplesReady { mut samples, generation } => {
+                    waveform::Message::SamplesReady {
+                        mut samples,
+                        generation,
+                    } => {
                         assert_eq!(generation, 0);
                         buffer.append(&mut samples);
                     }
@@ -456,9 +475,13 @@ mod tests {
                         assert_eq!(buffer, load_samples_mono());
                         return;
                     }
-                    _ => { panic!("Unexpected message '{:?}'", message); }
+                    _ => {
+                        panic!("Unexpected message '{:?}'", message);
+                    }
                 }
             }
-        } else { unreachable!() }
+        } else {
+            unreachable!()
+        }
     }
 }
