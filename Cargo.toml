@@ -20,7 +20,7 @@ mime = "0.3.17"
 mime_guess = "2.0.5"
 notify = "8.0.0"
 rfd = "0.15.3"
-rodio = { git = "https://github.com/RustAudio/rodio", rev = "64cf70b45b3097ca10ca72eccceaddbb937b24e2" }
+rodio = { git = "https://github.com/RustAudio/rodio", rev = "aa75313472ff4867a976cd345f78455971d422a2" }
 rustfft = "6.2.0"
 temp-dir-builder = "0.1.0"
 thiserror = "2.0.12"

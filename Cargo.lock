@@ -3715,7 +3715,7 @@ dependencies = [
 [[package]]
 name = "rodio"
 version = "0.20.1"
-source = "git+https://github.com/RustAudio/rodio?rev=64cf70b45b3097ca10ca72eccceaddbb937b24e2#64cf70b45b3097ca10ca72eccceaddbb937b24e2"
+source = "git+https://github.com/RustAudio/rodio?rev=aa75313472ff4867a976cd345f78455971d422a2#aa75313472ff4867a976cd345f78455971d422a2"
 dependencies = [
  "claxon",
  "cpal",
