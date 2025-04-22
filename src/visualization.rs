@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use iced::Task;
 use itertools::Itertools;
 use rodio::ChannelCount;
@@ -22,7 +24,7 @@ impl Visualization {
             Message::AudioBuffer(channels, samples) => {
                 let rms = Self::compute_rms(channels, &samples);
                 let points = Self::vectorscope(channels, &samples);
-                let mono = Self::mono(channels, &samples);
+                let mono = Arc::new(Self::mono(channels, &samples));
 
                 Task::batch([
                     Task::done(crate::Message::VuMeter(vu_meter::Message::Rms(rms))),

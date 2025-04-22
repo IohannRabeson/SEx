@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::ui;
 use iced::widget::canvas;
 use iced::{
@@ -12,7 +14,7 @@ pub struct Scope {
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    Buffer(Vec<f32>),
+    Buffer(Arc<Vec<f32>>),
 }
 
 impl Scope {
@@ -22,9 +24,9 @@ impl Scope {
 
     pub fn update(&mut self, message: Message) {
         match message {
-            Message::Buffer(mut buffer) => {
+            Message::Buffer(buffer) => {
                 self.buffer.clear();
-                self.buffer.append(&mut buffer);
+                self.buffer.extend(buffer.iter());
             }
         }
     }
@@ -87,6 +89,8 @@ impl canvas::Program<crate::Message> for Scope {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use crate::{
         tests::{generate_sine, simulator},
         SEx,
@@ -97,7 +101,7 @@ mod tests {
     fn test_scope() -> Result<(), Error> {
         let (mut app, _task) = SEx::new();
 
-        let buffer = generate_sine(1000).collect();
+        let buffer = Arc::new(generate_sine(1000).collect());
         let _ = app.update(crate::Message::Scope(crate::scope::Message::Buffer(buffer)));
 
         let mut ui = simulator(&app);
