@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use iced::widget::canvas;
 use iced::{
     mouse,
@@ -49,7 +51,7 @@ impl Spectrum {
         }
     }
 
-    fn process_buffer(&mut self, buffer: Vec<f32>) {
+    fn process_buffer(&mut self, buffer: Arc<Vec<f32>>) {
         let bin_resolution = self.sample_rate as f32 / self.processor.fft_size() as f32;
 
         if let Some(results) = self.processor.process(&buffer) {
@@ -77,7 +79,7 @@ impl Spectrum {
 
 #[derive(Debug, Clone)]
 pub enum Message {
-    Buffer(Vec<f32>),
+    Buffer(Arc<Vec<f32>>),
     SampleRateChanged(usize),
 }
 
