@@ -200,9 +200,11 @@ impl canvas::Program<crate::Message> for Tuner {
         frame.stroke(&line_path, stroke);
         frame.fill_text(Text {
             content: self.display.clone(),
-            position: Point::new(0.0, (frame.height() - 20.0) / 2.0), // TODO: implement something in iced to get the measured text
+            position: Point::new(bounds.width / 2.0, bounds.height / 2.0),
             color: theme.palette().text,
             size: 20u32.into(),
+            align_x: iced::alignment::Horizontal::Center,
+            align_y: iced::alignment::Vertical::Center,
             ..Default::default()
         });
         vec![frame.into_geometry()]
