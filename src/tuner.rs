@@ -3,8 +3,8 @@ use std::sync::Arc;
 use iced::{
     mouse,
     widget::{
-        canvas::{self, Frame, Path, Text},
-        Canvas,
+        canvas,
+        canvas::{Frame, Path, Text},
     },
     Element, Length, Point, Renderer, Theme,
 };
@@ -71,8 +71,7 @@ impl Tuner {
 
                     if (MIN_FREQ..=MAX_FREQ).contains(&frequency) {
                         magnitude_spec.push((result.re * result.re + result.im * result.im).sqrt());
-                    }
-                    else {
+                    } else {
                         magnitude_spec.push(0f32);
                     }
                 }
@@ -81,7 +80,7 @@ impl Tuner {
                 const NUM_HPS: usize = 5;
 
                 let mag_spec_ipol = magnitude_spec.clone();
-                
+
                 for i in 0..NUM_HPS {
                     let new_len = (magnitude_spec.len() as f64 / (i + 1) as f64).ceil() as usize;
                     let tmp_hps_spec: Vec<f32> = magnitude_spec[..new_len]
@@ -121,12 +120,7 @@ impl Tuner {
     }
 
     pub fn view(&self) -> Element<crate::Message> {
-        Canvas::new(self)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .into()
-        // Alternative display for debugging
-        //container(text(&self.display)).center(Length::Fill).into()
+        canvas(self).width(Length::Fill).height(Length::Fill).into()
     }
 }
 
@@ -146,33 +140,6 @@ fn midi_to_note(midi: usize) -> &'static str {
     ];
 
     NOTES[midi % 12]
-}
-
-#[cfg(test)]
-mod tests {
-    use rstest::rstest;
-
-    use super::frequency_to_midi;
-
-    #[rstest]
-    #[case(0, "C")]
-    #[case(69, "A")]
-    fn test_midi_to_note(#[case] input: usize, #[case] expected: &str) {
-        use super::midi_to_note;
-
-        let result = midi_to_note(input);
-
-        assert_eq!(result, expected);
-    }
-
-    #[rstest]
-    #[case(440f32, 69)]
-    #[case(261.6f32, 60)]
-    fn test_frequency_to_midi(#[case] input: f32, #[case] expected: usize) {
-        let result = frequency_to_midi(input);
-
-        assert_eq!(result, expected)
-    }
 }
 
 impl canvas::Program<crate::Message> for Tuner {
@@ -208,5 +175,32 @@ impl canvas::Program<crate::Message> for Tuner {
             ..Default::default()
         });
         vec![frame.into_geometry()]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use rstest::rstest;
+
+    use super::frequency_to_midi;
+
+    #[rstest]
+    #[case(0, "C")]
+    #[case(69, "A")]
+    fn test_midi_to_note(#[case] input: usize, #[case] expected: &str) {
+        use super::midi_to_note;
+
+        let result = midi_to_note(input);
+
+        assert_eq!(result, expected);
+    }
+
+    #[rstest]
+    #[case(440f32, 69)]
+    #[case(261.6f32, 60)]
+    fn test_frequency_to_midi(#[case] input: f32, #[case] expected: usize) {
+        let result = frequency_to_midi(input);
+
+        assert_eq!(result, expected)
     }
 }

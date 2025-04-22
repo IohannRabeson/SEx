@@ -23,37 +23,33 @@ impl Visualization {
     pub fn update(&mut self, message: Message) -> Task<crate::Message> {
         match message {
             Message::AudioBuffer(channels, samples) => {
-                        let rms = Self::compute_rms(channels, &samples);
-                        let points = Self::vectorscope(channels, &samples);
+                let rms = Self::compute_rms(channels, &samples);
+                let points = Self::vectorscope(channels, &samples);
                 let mono = Arc::new(Self::mono(channels, &samples));
 
-                        Task::batch([
-                            Task::done(crate::Message::VuMeter(vu_meter::Message::Rms(rms))),
-                            Task::done(crate::Message::Vectorscope(vectorscope::Message::Points(
-                                points,
-                            ))),
-                            Task::done(crate::Message::Scope(scope::Message::Buffer(mono.clone()))),
-                            Task::done(crate::Message::Spectrum(spectrum::Message::Buffer(
-                                mono.clone(),
-                            ))),
-                            Task::done(crate::Message::Tuner(tuner::Message::Buffer(mono))),
-                        ])
-                    }
-            Message::SampleRateChanged(sample_rate) => {
                 Task::batch([
-                        Task::done(crate::Message::Spectrum(
-                            spectrum::Message::SampleRateChanged(sample_rate),
-                        )),
-                        Task::done(crate::Message::Tuner(tuner::Message::SampleRateChanged(
-                            sample_rate,
-                        ))),
-                    ])
-            }
-            Message::SampleSelectionChanged => {
-                Task::batch([
-                    Task::done(crate::Message::Tuner(tuner::Message::SampleSelectionChanged))
+                    Task::done(crate::Message::VuMeter(vu_meter::Message::Rms(rms))),
+                    Task::done(crate::Message::Vectorscope(vectorscope::Message::Points(
+                        points,
+                    ))),
+                    Task::done(crate::Message::Scope(scope::Message::Buffer(mono.clone()))),
+                    Task::done(crate::Message::Spectrum(spectrum::Message::Buffer(
+                        mono.clone(),
+                    ))),
+                    Task::done(crate::Message::Tuner(tuner::Message::Buffer(mono))),
                 ])
-            },
+            }
+            Message::SampleRateChanged(sample_rate) => Task::batch([
+                Task::done(crate::Message::Spectrum(
+                    spectrum::Message::SampleRateChanged(sample_rate),
+                )),
+                Task::done(crate::Message::Tuner(tuner::Message::SampleRateChanged(
+                    sample_rate,
+                ))),
+            ]),
+            Message::SampleSelectionChanged => Task::batch([Task::done(crate::Message::Tuner(
+                tuner::Message::SampleSelectionChanged,
+            ))]),
         }
     }
 

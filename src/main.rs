@@ -172,7 +172,7 @@ impl SEx {
             .unwrap();
 
         let directory_icon = svg::Handle::from_memory(include_bytes!("../svg/icons8-folder2.svg"));
-        
+
         panes.resize(tuner_split, 0.8);
 
         (
@@ -243,7 +243,9 @@ impl SEx {
                 if path.is_file() && display_file(&path) {
                     self.audio.play(&path);
                     self.waveform.show(&path);
-                    return Task::done(Message::Visualization(visualization::Message::SampleSelectionChanged));
+                    return Task::done(Message::Visualization(
+                        visualization::Message::SampleSelectionChanged,
+                    ));
                 } else {
                     return Task::done(Message::SelectFile(None));
                 }
