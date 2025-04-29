@@ -8,11 +8,9 @@ use iced::{
     },
     Element, Length, Point, Renderer, Theme,
 };
+use pitch_detection::detector::{yin::YINDetector, PitchDetector};
 
-use crate::{fft_processor::FftProcessor, ui};
-
-const MIN_FREQ: f32 = 20.0;
-const MAX_FREQ: f32 = 10000.0;
+use crate::ui;
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -24,110 +22,60 @@ pub enum Message {
 pub struct Tuner {
     display: String,
     sample_rate: usize,
-    processor: FftProcessor<16384>,
+    pitch_detector: YINDetector<f32>,
+    buffer: Vec<f32>,
 }
+
+const WINDOW: usize = 1024 * 8;
+const WINDOW_PADDING: usize = WINDOW / 2;
 
 impl Tuner {
     pub fn new() -> Self {
+        
         Self {
             display: String::new(),
             sample_rate: 0,
-            processor: FftProcessor::new(),
+            pitch_detector: YINDetector::new(WINDOW, WINDOW_PADDING),
+            buffer: Vec::with_capacity(WINDOW),
         }
     }
 
     pub fn update(&mut self, message: Message) {
         match message {
-            Message::Buffer(buffer) => {
-                if buffer.is_empty() {
+            Message::Buffer(new_buffer) => {
+                if new_buffer.is_empty() {
                     self.display.clear();
                     return;
                 }
 
-                self.process_buffer(buffer);
+                self.process_buffer(new_buffer);
             }
             Message::SampleRateChanged(sample_rate) => {
                 self.sample_rate = sample_rate;
             }
             Message::SampleSelectionChanged => {
-                self.processor.reset();
+                self.buffer.clear();
             }
         }
     }
 
-    fn process_buffer(&mut self, buffer: Arc<Vec<f32>>) {
-        let fft_size = self.processor.fft_size();
-        let bin_resolution = self.sample_rate as f32 / fft_size as f32;
+    fn process_buffer(&mut self, new_buffer: Arc<Vec<f32>>) {
+        self.buffer.extend(new_buffer.iter());
 
-        let average = compute_signal_power(&buffer);
-
-        if average >= 1e-6 {
-            if let Some(results) = self.processor.process(&buffer) {
-                let half_fft_size = fft_size / 2;
-                let mut magnitude_spec = Vec::with_capacity(half_fft_size);
-
-                for (index, result) in results.take(half_fft_size).enumerate() {
-                    let frequency = bin_resolution * index as f32;
-
-                    if (MIN_FREQ..=MAX_FREQ).contains(&frequency) {
-                        magnitude_spec.push((result.re * result.re + result.im * result.im).sqrt());
-                    } else {
-                        magnitude_spec.push(0f32);
-                    }
-                }
-
-                // Harmonic Product Spectrum (https://www.chciken.com/digital/signal/processing/2020/05/13/guitar-tuner.html#dft)
-                const NUM_HPS: usize = 5;
-
-                let mag_spec_ipol = magnitude_spec.clone();
-
-                for i in 0..NUM_HPS {
-                    let new_len = (magnitude_spec.len() as f64 / (i + 1) as f64).ceil() as usize;
-                    let tmp_hps_spec: Vec<f32> = magnitude_spec[..new_len]
-                        .iter()
-                        .zip(mag_spec_ipol.iter().step_by(i + 1))
-                        .map(|(a, b)| a * b)
-                        .collect();
-
-                    if tmp_hps_spec.iter().all(|&x| x == 0.0) {
-                        break;
-                    }
-
-                    magnitude_spec = tmp_hps_spec;
-                }
-
-                let mut max_bin_index = None;
-                let mut max_mag = 0f32;
-
-                for (index, magnitude) in magnitude_spec.iter().enumerate() {
-                    if magnitude > &max_mag {
-                        max_mag = *magnitude;
-                        max_bin_index = Some(index);
-                    }
-                }
-
-                self.display = max_bin_index
-                    .map(|max_bin_index| {
-                        let frequency = max_bin_index as f32 * bin_resolution;
-                        let midi = frequency_to_midi(frequency);
-                        let note = midi_to_note(midi);
-
-                        note.to_string()
-                    })
-                    .unwrap_or_default()
-            }
+        if self.buffer.len() <= WINDOW {
+            return
         }
+
+        let pitch = self.pitch_detector.get_pitch(&self.buffer[0..WINDOW], self.sample_rate, 10.0, 0.1);
+
+        self.buffer.drain(0..WINDOW);
+
+        self.display = pitch.map(|pitch|midi_to_note(frequency_to_midi(pitch.frequency)).to_owned()).unwrap_or_default();
     }
 
     pub fn view(&self) -> Element<crate::Message> {
         canvas(self).width(Length::Fill).height(Length::Fill).into()
     }
-}
-
-fn compute_signal_power(samples: &[f32]) -> f32 {
-    let sum_of_squares: f32 = samples.iter().map(|&x| x * x).sum();
-
-    sum_of_squares / samples.len() as f32
 }
 
 fn frequency_to_midi(fm: f32) -> usize {
@@ -168,7 +116,7 @@ impl canvas::Program<crate::Message> for Tuner {
         frame.fill_text(Text {
             content: self.display.clone(),
             position: Point::new(bounds.width / 2.0, bounds.height / 2.0),
-            color: theme.palette().text,
+            color: ui::main_color(theme),
             size: 20u32.into(),
             align_x: iced::alignment::Horizontal::Center,
             align_y: iced::alignment::Vertical::Center,
