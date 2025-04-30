@@ -47,6 +47,7 @@ impl Spectrum {
             }
             Message::SampleRateChanged(sample_rate) => {
                 self.sample_rate = sample_rate;
+                self.processor.reset();
             }
         }
     }
