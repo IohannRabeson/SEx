@@ -124,7 +124,7 @@ impl canvas::Program<crate::Message> for Tuner {
             content: self.display.clone(),
             position: Point::new(bounds.width / 2.0, bounds.height / 2.0),
             color: ui::main_color(theme),
-            size: 20u32.into(),
+            size: (bounds.width.min(bounds.height) - 23.0).into(),
             align_x: iced::alignment::Horizontal::Center,
             align_y: iced::alignment::Vertical::Center,
             ..Default::default()
