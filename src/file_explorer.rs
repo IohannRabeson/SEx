@@ -868,7 +868,7 @@ mod tests {
 
         let snapshot = ui.snapshot(&iced::Theme::CatppuccinFrappe)?;
 
-        assert!(snapshot.matches_hash("snapshots/test_select")?);
+        assert!(snapshot.matches_image("snapshots/test_select")?);
 
         Ok(())
     }
