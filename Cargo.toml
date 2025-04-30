@@ -19,6 +19,7 @@ log = "0.4.27"
 mime = "0.3.17"
 mime_guess = "2.0.5"
 notify = "8.0.0"
+pitch-detection = "0.3.0"
 rfd = "0.15.3"
 rodio = { git = "https://github.com/RustAudio/rodio", rev = "aa75313472ff4867a976cd345f78455971d422a2" }
 rustfft = "6.2.0"

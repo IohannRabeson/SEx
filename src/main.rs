@@ -16,6 +16,7 @@ use rfd::AsyncFileDialog;
 use scope::Scope;
 use search::Search;
 use spectrum::Spectrum;
+use tuner::Tuner;
 use vectorscope::Vectorscope;
 use visualization::Visualization;
 use vu_meter::VuMeter;
@@ -28,6 +29,7 @@ mod file_watcher;
 mod scope;
 mod search;
 mod spectrum;
+mod tuner;
 mod ui;
 mod vectorscope;
 mod visualization;
@@ -71,6 +73,7 @@ enum Message {
     Spectrum(spectrum::Message),
     FileWatcher(file_watcher::Message),
     Visualization(visualization::Message),
+    Tuner(tuner::Message),
     PaneResized(pane_grid::ResizeEvent),
     /// Send this message to show the waveform of a file and play it using Task::done.
     /// Send SelectFile(None) to clear the waveform and stop playing audio.
@@ -89,6 +92,7 @@ enum PaneState {
     Vectorscope,
     Scope,
     Spectrum,
+    Tuner,
 }
 
 struct SEx {
@@ -105,6 +109,7 @@ struct SEx {
     scope: Scope,
     spectrum: Spectrum,
     theme: Theme,
+    tuner: Tuner,
 }
 
 impl SEx {
@@ -142,7 +147,7 @@ impl SEx {
 
         panes.resize(waveform_vu_meter_split, 0.8);
 
-        let (_, vectorscope_scope_split) = panes
+        let (scope_pane, vectorscope_scope_split) = panes
             .split(
                 pane_grid::Axis::Horizontal,
                 vectorscope_pane,
@@ -162,7 +167,13 @@ impl SEx {
 
         panes.resize(spectrum_split, 0.6);
 
+        let (_, tuner_split) = panes
+            .split(pane_grid::Axis::Vertical, scope_pane, PaneState::Tuner)
+            .unwrap();
+
         let directory_icon = svg::Handle::from_memory(include_bytes!("../svg/icons8-folder2.svg"));
+
+        panes.resize(tuner_split, 0.8);
 
         (
             Self {
@@ -179,6 +190,7 @@ impl SEx {
                 scope: Scope::new(),
                 spectrum: Spectrum::new(),
                 theme: Theme::CatppuccinFrappe,
+                tuner: Tuner::new(),
             },
             Task::perform(select_existing_directory(), Message::OpenDirectory),
         )
@@ -224,10 +236,16 @@ impl SEx {
             Message::Spectrum(message) => {
                 self.spectrum.update(message);
             }
+            Message::Tuner(message) => {
+                self.tuner.update(message);
+            }
             Message::SelectFile(Some(path)) => {
                 if path.is_file() && display_file(&path) {
                     self.audio.play(&path);
                     self.waveform.show(&path);
+                    return Task::done(Message::Visualization(
+                        visualization::Message::SampleSelectionChanged,
+                    ));
                 } else {
                     return Task::done(Message::SelectFile(None));
                 }
@@ -264,6 +282,7 @@ impl SEx {
             PaneState::Vectorscope => self.vectorscope.view().into(),
             PaneState::Scope => self.scope.view().into(),
             PaneState::Spectrum => self.spectrum.view().into(),
+            PaneState::Tuner => self.tuner.view().into(),
         });
 
         pane_grid
