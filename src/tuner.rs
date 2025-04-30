@@ -60,6 +60,9 @@ impl Tuner {
     }
 
     fn process_buffer(&mut self, new_buffer: Arc<Vec<f32>>) {
+        // self.buffer does not grow because WINDOW is bigger than new_buffer.len().
+        assert!(WINDOW >= new_buffer.len());
+
         self.buffer.extend(new_buffer.iter());
 
         if self.buffer.len() <= WINDOW {
