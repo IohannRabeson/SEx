@@ -31,7 +31,6 @@ const WINDOW_PADDING: usize = WINDOW / 2;
 
 impl Tuner {
     pub fn new() -> Self {
-        
         Self {
             display: String::new(),
             sample_rate: 0,
@@ -66,14 +65,19 @@ impl Tuner {
         self.buffer.extend(new_buffer.iter());
 
         if self.buffer.len() <= WINDOW {
-            return
+            return;
         }
 
-        let pitch = self.pitch_detector.get_pitch(&self.buffer[0..WINDOW], self.sample_rate, 10.0, 0.1);
+        let pitch =
+            self.pitch_detector
+                .get_pitch(&self.buffer[0..WINDOW], self.sample_rate, 10.0, 0.1);
 
         self.buffer.drain(0..WINDOW);
 
-        self.display = pitch.map(|pitch|display_frequency_as_midi_note(pitch.frequency)).unwrap_or_default().to_owned();
+        self.display = pitch
+            .map(|pitch| display_frequency_as_midi_note(pitch.frequency))
+            .unwrap_or_default()
+            .to_owned();
     }
 
     pub fn view(&self) -> Element<crate::Message> {
@@ -94,7 +98,7 @@ fn midi_to_note(midi: usize) -> &'static str {
         "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B",
     ];
 
-    NOTES[midi % 12]
+    NOTES[midi % NOTES.len()]
 }
 
 impl canvas::Program<crate::Message> for Tuner {
