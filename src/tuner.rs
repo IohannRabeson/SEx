@@ -70,7 +70,7 @@ impl Tuner {
 
         self.buffer.drain(0..WINDOW);
 
-        self.display = pitch.map(|pitch|midi_to_note(frequency_to_midi(pitch.frequency)).to_owned()).unwrap_or_default();
+        self.display = pitch.map(|pitch|display_frequency_as_midi_note(pitch.frequency)).unwrap_or_default().to_owned();
     }
 
     pub fn view(&self) -> Element<crate::Message> {
@@ -78,8 +78,12 @@ impl Tuner {
     }
 }
 
-fn frequency_to_midi(fm: f32) -> usize {
-    (12.0 * (fm / 440.0).log2() + 69.0).round() as usize
+fn display_frequency_as_midi_note(frequency: f32) -> &'static str {
+    midi_to_note(frequency_to_midi(frequency))
+}
+
+fn frequency_to_midi(frequency: f32) -> usize {
+    (12.0 * (frequency / 440.0).log2() + 69.0).round() as usize
 }
 
 fn midi_to_note(midi: usize) -> &'static str {
