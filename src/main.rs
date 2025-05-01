@@ -348,9 +348,16 @@ fn display_file(path: impl AsRef<Path>) -> bool {
         return false;
     }
 
-    mime_guess::from_path(path)
-        .iter()
-        .any(|mime| mime.type_() == mime::AUDIO && mime.subtype() != "midi")
+    mime_guess::from_path(path).iter().any(|mime| {
+        if mime.type_() != mime::AUDIO {
+            return false;
+        }
+
+        match mime.subtype().as_str() {
+            "wav" | "flac" | "ogg" => true,
+            _ => false,
+        }
+    })
 }
 
 async fn select_existing_directory() -> Option<PathBuf> {
