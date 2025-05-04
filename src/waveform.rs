@@ -48,7 +48,7 @@ pub enum Message {
 
 #[derive(Default)]
 pub struct Waveform {
-    cache: Cache,
+    waveform_cache: Cache,
     samples: Vec<f32>,
     total_samples: usize,
     play_position: f32,
@@ -103,6 +103,7 @@ impl Waveform {
                 self.samples.clear();
                 self.samples.reserve(samples_count);
                 self.total_samples = samples_count;
+                self.waveform_cache.clear();
 
                 debug!("Loading started: {samples_count}");
             }
@@ -115,10 +116,12 @@ impl Waveform {
             } => {
                 if self.current_generation == generation {
                     self.samples.append(&mut samples);
+                    self.waveform_cache.clear();
                 }
             }
             Message::Clear => {
                 self.samples.clear();
+                self.waveform_cache.clear();
                 self.total_samples = 0;
             }
             Message::PlayPosition(position) => {
@@ -143,8 +146,6 @@ impl Waveform {
                 self.bounds = rectangle;
             }
         }
-
-        self.cache.clear();
 
         Task::none()
     }
@@ -329,7 +330,7 @@ impl canvas::Program<crate::Message> for Waveform {
         bounds: Rectangle,
         cursor: mouse::Cursor,
     ) -> Vec<canvas::Geometry<Renderer>> {
-        let geometry = self.cache.draw(renderer, bounds.size(), |frame| {
+        let waveform_geometry = self.waveform_cache.draw(renderer, bounds.size(), |frame| {
             let samples_in_block = self.total_samples / frame.width() as usize;
 
             // Draw central line
@@ -355,26 +356,33 @@ impl canvas::Program<crate::Message> for Waveform {
                         )
                     }
                 }
-
-                // Draw play position
-                frame.fill_rectangle(
-                    Point::new(self.play_position * frame.width(), 0f32),
-                    Size::new(1f32, frame.height()),
-                    theme.extended_palette().secondary.base.color,
-                );
-
-                // Draw cursor position
-                if let Some(cursor_position) = cursor.position_in(bounds) {
-                    frame.fill_rectangle(
-                        Point::new(cursor_position.x, 0f32),
-                        Size::new(1f32, frame.height()),
-                        theme.extended_palette().secondary.base.color,
-                    );
-                }
             }
         });
 
-        vec![geometry]
+        let mut overlay_frame = canvas::Frame::new(renderer, bounds.size());
+
+        if self.total_samples > 0 {
+            // Draw play position
+            overlay_frame.fill_rectangle(
+                Point::new(self.play_position * overlay_frame.width(), 0f32),
+                Size::new(1f32, overlay_frame.height()),
+                theme.extended_palette().secondary.base.color,
+            );
+        }
+
+        // Draw cursor position
+        if let Some(cursor_position) = cursor.position_in(bounds) {
+            overlay_frame.fill_rectangle(
+                Point::new(cursor_position.x, 0f32),
+                Size::new(1f32, overlay_frame.height()),
+                theme.extended_palette().secondary.base.color,
+            );
+        }
+
+        vec![
+            waveform_geometry,
+            overlay_frame.into_geometry(),
+        ]
     }
 }
 
