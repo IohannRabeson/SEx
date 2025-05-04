@@ -264,12 +264,11 @@ mod details {
         }
 
         fn submit_buffer(&mut self) {
-            self.sender
+            let _ = self.sender
                 .try_send(Message::Visualization(visualization::Message::AudioBuffer(
                     self.source.channels(),
                     self.buffer.to_vec(),
-                )))
-                .unwrap();
+                )));
 
             self.buffer.clear();
         }
