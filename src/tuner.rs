@@ -64,7 +64,7 @@ impl Tuner {
 
         self.buffer.extend(new_buffer.iter());
 
-        if self.buffer.len() <= WINDOW {
+        if self.buffer.len() < WINDOW {
             return;
         }
 
