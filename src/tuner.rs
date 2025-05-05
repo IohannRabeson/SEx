@@ -126,23 +126,20 @@ impl canvas::Program<crate::Message> for Tuner {
         let stroke = ui::separation_line_stroke(theme);
 
         frame.stroke(&line_path, stroke);
-        
+
         let min_size = bounds.width.min(bounds.height);
 
         if min_size > TEXT_PADDING {
-
-       
-        frame.fill_text(Text {
-            content: self.display.clone(),
-            position: Point::new(bounds.width / 2.0, bounds.height / 2.0),
-            color: ui::main_color(theme),
-            size: (bounds.width.min(bounds.height) - TEXT_PADDING).into(),
-            align_x: iced::alignment::Horizontal::Center,
-            align_y: iced::alignment::Vertical::Center,
-            ..Default::default()
-        });
-
-    }
+            frame.fill_text(Text {
+                content: self.display.clone(),
+                position: Point::new(bounds.width / 2.0, bounds.height / 2.0),
+                color: ui::main_color(theme),
+                size: (bounds.width.min(bounds.height) - TEXT_PADDING).into(),
+                align_x: iced::alignment::Horizontal::Center,
+                align_y: iced::alignment::Vertical::Center,
+                ..Default::default()
+            });
+        }
         vec![frame.into_geometry()]
     }
 }

@@ -285,29 +285,33 @@ async fn process_command(command: WaveformCommand, output: &mut mpsc::Sender<Mes
             match File::open(&path) {
                 Ok(file) => {
                     if let Ok(decoder) = Decoder::new(BufReader::new(file)) {
-                                    if let Some(duration) = decoder.total_duration() {
-                                        let sample_rate = decoder.sample_rate() as u128;
-                                        let samples_count = duration.as_nanos() * sample_rate;
-                                        const DIVISOR: u128 = 1_000_000_000;
-                                        let samples_count = samples_count / DIVISOR;
+                        if let Some(duration) = decoder.total_duration() {
+                            let sample_rate = decoder.sample_rate() as u128;
+                            let samples_count = duration.as_nanos() * sample_rate;
+                            const DIVISOR: u128 = 1_000_000_000;
+                            let samples_count = samples_count / DIVISOR;
 
-                                        debug!("Sample rate: {}", decoder.sample_rate());
+                            debug!("Sample rate: {}", decoder.sample_rate());
 
-                                        output
-                                            .send(Message::LoadingStarted(samples_count as usize))
-                                            .await
-                                            .unwrap();
+                            output
+                                .send(Message::LoadingStarted(samples_count as usize))
+                                .await
+                                .unwrap();
 
-                                        return State::Decoding {
-                                            decoder: Box::new(decoder),
-                                            samples_count: samples_count as usize,
-                                            sample_rate: sample_rate as usize,
-                                            generation,
-                                        };
-                                    }
-                                }
+                            return State::Decoding {
+                                decoder: Box::new(decoder),
+                                samples_count: samples_count as usize,
+                                sample_rate: sample_rate as usize,
+                                generation,
+                            };
+                        }
+                    }
                 }
-                Err(error) => log::error!("Failed to open file '{}' for reading: {}", path.display(), error),
+                Err(error) => log::error!(
+                    "Failed to open file '{}' for reading: {}",
+                    path.display(),
+                    error
+                ),
             }
 
             output.send(Message::Clear).await.unwrap();
@@ -382,10 +386,7 @@ impl canvas::Program<crate::Message> for Waveform {
             );
         }
 
-        vec![
-            waveform_geometry,
-            overlay_frame.into_geometry(),
-        ]
+        vec![waveform_geometry, overlay_frame.into_geometry()]
     }
 }
 
