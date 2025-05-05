@@ -32,7 +32,7 @@ pub enum WaveformCommand {
 #[derive(Debug, Clone)]
 pub enum Message {
     Initialized(mpsc::Sender<WaveformCommand>),
-    LoadingStarted(usize),
+    LoadingStarted(Option<usize>),
     LoadingFinished,
     Clear,
     SamplesReady {
@@ -50,7 +50,7 @@ pub enum Message {
 pub struct Waveform {
     waveform_cache: Cache,
     samples: Vec<f32>,
-    total_samples: usize,
+    total_samples: Option<usize>,
     play_position: f32,
     command_sender: Option<mpsc::Sender<WaveformCommand>>,
     current_generation: usize,
@@ -62,7 +62,6 @@ enum State {
     Idle,
     Decoding {
         decoder: Box<Decoder<BufReader<File>>>,
-        samples_count: usize,
         sample_rate: usize,
         generation: usize,
     },
@@ -101,11 +100,10 @@ impl Waveform {
             }
             Message::LoadingStarted(samples_count) => {
                 self.samples.clear();
-                self.samples.reserve(samples_count);
                 self.total_samples = samples_count;
                 self.waveform_cache.clear();
 
-                debug!("Loading started: {samples_count}");
+                debug!("Loading started");
             }
             Message::LoadingFinished => {
                 debug!("Loading finished");
@@ -122,7 +120,7 @@ impl Waveform {
             Message::Clear => {
                 self.samples.clear();
                 self.waveform_cache.clear();
-                self.total_samples = 0;
+                self.total_samples = None;
             }
             Message::PlayPosition(position) => {
                 self.play_position = position;
@@ -200,54 +198,52 @@ fn waveform_loading() -> impl Stream<Item = Message> {
                 }
                 State::Decoding {
                     mut decoder,
-                    samples_count,
                     sample_rate,
                     generation,
                 } => {
                     let loading_start_time = Instant::now();
-                    let buffer_size = sample_rate;
+                    let mut total_samples = 0;
+                    let buffer_size = sample_rate * 16;
                     debug!("Decoding, buffer size: {}", buffer_size);
                     let mut buffer = Vec::with_capacity(buffer_size);
+                    let mut channel = 0;
+                    let mut accumulator = 0f32;
 
-                    'outer: for i in 0..samples_count {
-                        let mut accumulator = 0f32;
-
-                        for c in 0..decoder.channels() {
-                            if let Some(WaveformCommand::StopLoading) =
-                                command_receiver.next().now_or_never().flatten()
-                            {
-                                buffer.clear();
-                                break 'outer;
-                            }
-
-                            accumulator += match decoder.next() {
-                                Some(sample) => sample,
-                                None => {
-                                    debug!(
-                                        "No available samples to decode {} - channel {} - {}",
-                                        i, c, samples_count
-                                    );
-                                    0f32
-                                }
-                            };
+                    while let Some(sample) = decoder.next() {
+                        if let Some(WaveformCommand::StopLoading) =
+                            command_receiver.next().now_or_never().flatten()
+                        {
+                            buffer.clear();
+                            break;
                         }
 
-                        buffer.push(accumulator / decoder.channels() as f32);
+                        accumulator += sample;
+                        channel += 1;
 
-                        if buffer.len() == buffer_size {
-                            output
-                                .send(Message::SamplesReady {
-                                    samples: buffer.clone(),
-                                    generation,
-                                })
-                                .await
-                                .unwrap();
+                        if channel == decoder.channels() {
+                            buffer.push(accumulator / decoder.channels() as f32);
+                            accumulator = 0f32;
+                            channel -= decoder.channels();
 
-                            buffer.clear();
+                            if buffer.len() == buffer_size {
+                                total_samples += buffer.len();
+
+                                output
+                                    .send(Message::SamplesReady {
+                                        samples: buffer.clone(),
+                                        generation,
+                                    })
+                                    .await
+                                    .unwrap();
+
+                                buffer.clear();
+                            }
                         }
                     }
 
                     if !buffer.is_empty() {
+                        total_samples += buffer.len();
+
                         output
                             .send(Message::SamplesReady {
                                 samples: buffer.clone(),
@@ -266,7 +262,7 @@ fn waveform_loading() -> impl Stream<Item = Message> {
                         if duration == 0 {
                             0
                         } else {
-                            samples_count as u128 / duration
+                            total_samples as u128 / duration
                         }
                     );
 
@@ -285,26 +281,26 @@ async fn process_command(command: WaveformCommand, output: &mut mpsc::Sender<Mes
             match File::open(&path) {
                 Ok(file) => {
                     if let Ok(decoder) = Decoder::new(BufReader::new(file)) {
-                        if let Some(duration) = decoder.total_duration() {
+                        let samples_count = decoder.total_duration().map(|duration| {
                             let sample_rate = decoder.sample_rate() as u128;
                             let samples_count = duration.as_nanos() * sample_rate;
-                            const DIVISOR: u128 = 1_000_000_000;
-                            let samples_count = samples_count / DIVISOR;
 
-                            debug!("Sample rate: {}", decoder.sample_rate());
+                            (samples_count / 1_000_000_000) as usize
+                        });
+                        let sample_rate = decoder.sample_rate() as usize;
 
-                            output
-                                .send(Message::LoadingStarted(samples_count as usize))
-                                .await
-                                .unwrap();
+                        debug!("Sample count: {:?}", samples_count);
 
-                            return State::Decoding {
-                                decoder: Box::new(decoder),
-                                samples_count: samples_count as usize,
-                                sample_rate: sample_rate as usize,
-                                generation,
-                            };
-                        }
+                        output
+                            .send(Message::LoadingStarted(samples_count))
+                            .await
+                            .unwrap();
+
+                        return State::Decoding {
+                            decoder: Box::new(decoder),
+                            sample_rate,
+                            generation,
+                        };
                     }
                 }
                 Err(error) => log::error!(
@@ -338,7 +334,8 @@ impl canvas::Program<crate::Message> for Waveform {
         cursor: mouse::Cursor,
     ) -> Vec<canvas::Geometry<Renderer>> {
         let waveform_geometry = self.waveform_cache.draw(renderer, bounds.size(), |frame| {
-            let samples_in_block = self.total_samples / frame.width() as usize;
+            let samples_in_block =
+                self.total_samples.unwrap_or(self.samples.len()) / frame.width() as usize;
 
             // Draw central line
             frame.fill_rectangle(
@@ -368,7 +365,7 @@ impl canvas::Program<crate::Message> for Waveform {
 
         let mut overlay_frame = canvas::Frame::new(renderer, bounds.size());
 
-        if self.total_samples > 0 {
+        if !self.samples.is_empty() {
             // Draw play position
             overlay_frame.fill_rectangle(
                 Point::new(self.play_position * overlay_frame.width(), 0f32),
@@ -418,7 +415,7 @@ mod tests {
         let buffer = generate_sine(SIZE).collect();
 
         let _ = app.update(crate::Message::Waveform(
-            crate::waveform::Message::LoadingStarted(SIZE),
+            crate::waveform::Message::LoadingStarted(Some(SIZE)),
         ));
         let _ = app.update(crate::Message::Waveform(
             crate::waveform::Message::SamplesReady {
@@ -431,6 +428,31 @@ mod tests {
         let snapshot = ui.snapshot(&iced::Theme::CatppuccinFrappe)?;
 
         assert!(snapshot.matches_hash("snapshots/test_waveform")?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_waveform_progressive() -> Result<(), Error> {
+        let (mut app, _task) = SEx::new();
+
+        const SIZE: usize = 1000;
+        let buffer = generate_sine(SIZE).collect();
+
+        let _ = app.update(crate::Message::Waveform(
+            crate::waveform::Message::LoadingStarted(None),
+        ));
+        let _ = app.update(crate::Message::Waveform(
+            crate::waveform::Message::SamplesReady {
+                samples: buffer,
+                generation: 0,
+            },
+        ));
+
+        let mut ui = simulator(&app);
+        let snapshot = ui.snapshot(&iced::Theme::CatppuccinFrappe)?;
+
+        assert!(snapshot.matches_hash("snapshots/test_waveform_progressive")?);
 
         Ok(())
     }
