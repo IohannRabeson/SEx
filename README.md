@@ -3,3 +3,6 @@ This is a toy file explorer dedicated to audio samples. You click a sound file, 
 It should work on Windows and MacOS, and may work on Linux (I never really tested it).
 
 ![logo](preview.gif)
+
+## How to run
+`cargo run --release`
