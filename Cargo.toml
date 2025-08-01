@@ -18,7 +18,7 @@ itertools = "0.14.0"
 log = "0.4.27"
 notify = "8.0.0"
 pitch-detection = "0.3.0"
-rfd = "0.15.3"
+rfd = "0.15.4"
 rodio = { git = "https://github.com/RustAudio/rodio", rev = "aa75313472ff4867a976cd345f78455971d422a2" }
 rustfft = "6.4.0"
 temp-dir-builder = "0.1.0"
