@@ -26,5 +26,5 @@ thiserror = "2.0.12"
 tokio = { version = "1.45.1", features = ["fs", "rt", "macros"] }
 
 [dev-dependencies]
-rstest = "0.25.0"
+rstest = "0.26.1"
 iced_test = { git = "https://github.com/iced-rs/iced", rev = "193a340d6de929ff62af634df35555e256eff116" }
