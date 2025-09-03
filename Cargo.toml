@@ -22,8 +22,8 @@ rfd = "0.15.4"
 rodio = { git = "https://github.com/RustAudio/rodio", rev = "aa75313472ff4867a976cd345f78455971d422a2" }
 rustfft = "6.4.0"
 temp-dir-builder = "0.1.0"
+tokio = { version = "1.47.1", features = ["fs", "rt", "macros"] }
 thiserror = "2.0.16"
-tokio = { version = "1.45.1", features = ["fs", "rt", "macros"] }
 
 [dev-dependencies]
 rstest = "0.26.1"
