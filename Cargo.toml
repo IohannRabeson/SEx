@@ -15,7 +15,7 @@ fern = "0.7.1"
 humantime = "2.3.0"
 iced = { git = "https://github.com/iced-rs/iced", rev = "193a340d6de929ff62af634df35555e256eff116", features = ["tokio", "svg", "image", "canvas"] }
 itertools = "0.14.0"
-log = "0.4.27"
+log = "0.4.28"
 notify = "8.2.0"
 pitch-detection = "0.3.0"
 rfd = "0.15.4"
