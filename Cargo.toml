@@ -21,7 +21,7 @@ pitch-detection = "0.3.0"
 rfd = "0.17.2"
 rodio = { git = "https://github.com/RustAudio/rodio", rev = "aa75313472ff4867a976cd345f78455971d422a2" }
 rustfft = "6.4.1"
-temp-dir-builder = "0.1.0"
+temp-dir-builder = "0.3.0"
 thiserror = "2.0.18"
 tokio = { version = "1.52.3", features = ["fs", "rt", "macros"] }
 
